@@ -1,0 +1,61 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Default" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Guid>e43cfbc4-c186-44df-8a44-899a1aad5181</Guid>
+    <Name>WOTCLootIndicator_Extended</Name>
+    <Description>WOTCLootIndicator_Extended.
+A copy of WOTCLootIndicator (Additional Icons) with my personal additions and edits.
+These edits include ALL stats, CHL focus bars and Team Coloured Health Bars.</Description>
+    <SteamPublishID>0</SteamPublishID>
+    <AssemblyName>WOTCLootIndicator_Extended</AssemblyName>
+    <RootNamespace>WOTCLootIndicator_Extended</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Folder Include="Config\" />
+    <Folder Include="Content" />
+    <Folder Include="Src\" />
+    <Folder Include="Src\LW_Tuple" />
+    <Folder Include="Src\LW_Tuple\Classes" />
+    <Folder Include="Src\WOTCLootIndicator_Extended\" />
+    <Folder Include="Src\WOTCLootIndicator_Extended\Classes\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Config\XComrobojumperSquadSelect.ini">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Config\XComUI.ini">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Config\XComWOTCLootIndicator_Extended.ini">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Content\UILibrary_UIFlagExtended.upk">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="ReadMe.txt" />
+    <Content Include="ModPreview.jpg" />
+    <Content Include="Config\XComEditor.ini" />
+    <Content Include="Config\XComEngine.ini" />
+    <Content Include="Config\XComGame.ini" />
+    <Content Include="Src\LW_Tuple\Classes\LWTuple.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\WOTCLootIndicator_Extended\Classes\UIUFE_Manager.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\WOTCLootIndicator_Extended\Classes\UIUnitFlagExtended.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\WOTCLootIndicator_Extended\Classes\UIUnitFlagExtended_StatEntry.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\WOTCLootIndicator_Extended\Classes\UnitFlagExtendedHelpers.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\WOTCLootIndicator_Extended\Classes\WOTCLootIndicator_Extended.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\WOTCLootIndicator_Extended\Classes\X2DownloadableContentInfo_WOTCLootIndicator_Extended.uc" />
+  </ItemGroup>
+  <Import Project="$(MSBuildLocalExtensionPath)\XCOM2.targets" />
+</Project>
