@@ -761,6 +761,8 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 					//(value/total value) * 100%
 					WillPercent = (fCurrentValue / NewUnitState.GetMaxStat(eStat_Will)) * 100;
 
+					if (WillPercent <= 0) { WillPercent = 0 ;}
+
 					Entry.SetValue(int(WillPercent) $ "%");
 				}
 				else
