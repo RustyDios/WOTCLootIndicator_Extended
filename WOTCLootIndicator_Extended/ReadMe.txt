@@ -177,6 +177,7 @@ ECharStatType 's I could find
 // ================================================================================================================================================================
 // ================================================================================================================================================================
 
+//ICONS FOR UNIT FLAG
 UILibrary_UIFlagExtended.UIFlag_Aim
 UILibrary_UIFlagExtended.UIFlag_ArmorP
 UILibrary_UIFlagExtended.UIFlag_Armour
@@ -197,6 +198,7 @@ UILibrary_UIFlagExtended.UIFlag_Shield
 UILibrary_UIFlagExtended.UIFlag_Shield2
 UILibrary_UIFlagExtended.UIFlag_Will
 
+//ICONS FOR RJSS/YAF1
 UILibrary_UIFlagExtended.YA_Aim
 UILibrary_UIFlagExtended.YA_Armour
 UILibrary_UIFlagExtended.YA_Defense
@@ -208,6 +210,13 @@ UILibrary_UIFlagExtended.YA_Psi
 UILibrary_UIFlagExtended.YA_Shield
 UILibrary_UIFlagExtended.YA_ShieldS
 UILibrary_UIFlagExtended.YA_Will
+
+//ICONS FOR STATUS - MONO RED
+UILibrary_Common.status_burning
+UILibrary_Common.status_berserk					//used for ACID
+UILibrary_Common.status_poison
+UILibrary_Common.status_confused				//used for disoriented 
+UILibrary_Common.status_disoriented				//used for the four panic types
 
 UILibrary_UIFlagExtended.status_bleeding
 UILibrary_UIFlagExtended.status_frozen
@@ -222,6 +231,23 @@ UILibrary_UIFlagExtended.status_cursed
 UILibrary_UIFlagExtended.status_ripple
 
 UILibrary_UIFlagExtended.status_shielded
+
+//NEW ICONS FOR STATUS - COLOURED
+UILibrary_UIFlagExtended.statuscol_berserk
+UILibrary_UIFlagExtended.statuscol_blinded
+UILibrary_UIFlagExtended.statuscol_bound
+UILibrary_UIFlagExtended.statuscol_burning
+UILibrary_UIFlagExtended.statuscol_chill1
+UILibrary_UIFlagExtended.statuscol_chill2
+UILibrary_UIFlagExtended.statuscol_chill3
+UILibrary_UIFlagExtended.statuscol_confused
+UILibrary_UIFlagExtended.statuscol_cursed
+UILibrary_UIFlagExtended.statuscol_disoriented
+UILibrary_UIFlagExtended.statuscol_frozen
+UILibrary_UIFlagExtended.statuscol_homingmine
+UILibrary_UIFlagExtended.statuscol_poison
+UILibrary_UIFlagExtended.statuscol_poisonChrys
+UILibrary_UIFlagExtended.statuscol_ripple
 
 // ================================================================================================================================================================
 //		OTHER NOTES IN DEVELOPEMENT -- WELCOME TO MY SCRATCH PAD ;)
