@@ -19,6 +19,7 @@ Also fixes up;
 [h1]What is it?[/h1]
 This is a re-upload of a vanilla port. I failed to contact the original authors, but I think my changes are substantial enough to warrant a new mod.
 This mod follows in the footsteps of [url=https://steamcommunity.com/sharedfiles/filedetails/?id=646244015] Additional Icons [/url] and [url=https://steamcommunity.com/sharedfiles/filedetails/?id=1127409511] WOTC Additional Icons [/url]
+The codebase has been pretty much completely rewritten by now and no longer resembles the original inspiration, but I'm leaving the credits here.
 
 [h1]So what does this do?[/h1]
 This mod, like the two it is based upon, expands the 'UI Unit Flag' display to have more information. This includes new icons for display and a loot indicator.
@@ -129,7 +130,7 @@ Project is hosted on GitHub [url=https://github.com/RustyDios/WOTCLootIndicator_
 +StatsToShow=(BlockName="NSLW_1",    IconPath="UILibrary_NSLW.UINSLW_1",    HexColour="9ACBCB", Stat=,     			bCanObsfucate=1, 	SpecialTriggerID=NSLWTrigger   )
 
 so for OTHER mods to enable new stats they need to include a >> XComWOTCLootIndicator_Extended.ini << with the above header and config entry
-the EventTriggerID is called and the above tuple is sent out with 
+the SpecialTriggerID is called and the above tuple is sent out with 
     `XEVENTMGR.TriggerEvent(SpecialTriggerID, NSLWTuple, UnitState );
 
 Most of the displayed stat entry will come from the config entry, but the text display will come from the tuple result
@@ -168,7 +169,8 @@ ECharStatType 's I could find
 [eStat_UtilityItems]	# of utility item slots
 [eStat_CombatSims]		# of PCS can equip?
 
-//things I have no idea of what they are wrt stats 
+//things I have no idea of what they are wrt stats
+//these seem to be leftovers from XCOM:EU/EW
 [eStat_ReserveActionPoints]
 [eStat_FlightFuel]
 [eStat_BackpackSize]
@@ -215,22 +217,27 @@ UILibrary_UIFlagExtended.YA_Will
 UILibrary_Common.status_burning
 UILibrary_Common.status_berserk					//used for ACID
 UILibrary_Common.status_poison
+UILibrary_Common.status_unconscious
+UILibrary_Common.status_panic					//used for marked
 UILibrary_Common.status_confused				//used for disoriented 
 UILibrary_Common.status_disoriented				//used for the four panic types
+UILibrary_Common.status_stunned
+UILibrary_Common.status_mindcontrolled
 
-UILibrary_UIFlagExtended.status_bleeding
+UILibrary_UIFlagExtended.status_bleeding		//used for bleeding and ruptured
 UILibrary_UIFlagExtended.status_frozen
-UILibrary_UIFlagExtended.status_homingmine
-UILibrary_UIFlagExtended.status_immobile
+UILibrary_UIFlagExtended.status_homingmine		//used for exploding effects
+UILibrary_UIFlagExtended.status_immobile		//used for being carried
 UILibrary_UIFlagExtended.status_poisonChrys
 
-UILibrary_UIFlagExtended.status_chill1
-UILibrary_UIFlagExtended.status_chill2
-UILibrary_UIFlagExtended.status_chill3
-UILibrary_UIFlagExtended.status_cursed
-UILibrary_UIFlagExtended.status_ripple
+UILibrary_UIFlagExtended.status_chill1			//bitterfrost chill 
+UILibrary_UIFlagExtended.status_chill2			//bitterfrost chilled 
+UILibrary_UIFlagExtended.status_chill3			//frost munitions chill 
+UILibrary_UIFlagExtended.status_cursed			//mz perk pack cursed 
+UILibrary_UIFlagExtended.status_ripple			//claus ripple 
 
-UILibrary_UIFlagExtended.status_shielded
+UILibrary_UIFlagExtended.status_shielded		//ESO/shields 
+UILibrary_UIFlagExtended.status_timer			//RPT 
 
 //NEW ICONS FOR STATUS - COLOURED
 UILibrary_UIFlagExtended.statuscol_berserk
