@@ -72,8 +72,8 @@ static function array<string> GetCurrentStatusIconPaths(XComGameState_Unit NewUn
 	Icons = NewUnitState.GetUISummary_UnitStatusIcons();
 
 	//adding extended viper bind effect checks
-	if (bIsBound && Icons.Find("img:///UILibrary_Common.status_bound") == INDEX_NONE)
-	{ Icons.AddItem("img:///UILibrary_Common.status_bound"); }
+	if (bIsBound && Icons.Find(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Bound) == INDEX_NONE)
+	{ Icons.AddItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Bound); }
 
 	//add icons for common status effects that might not have them, if they are not already here
 	//add icons that have been setup through config .. burning, poison, ko, marked, disorient, panic, stunned, freeze, mind control
@@ -86,24 +86,29 @@ static function array<string> GetCurrentStatusIconPaths(XComGameState_Unit NewUn
 	}
 
 	//adding rupture as a status icon .. instead of RealizeRupture in UnitFlag
-	if ( Icons.Find("img:///UILibrary_UIFlagExtended.status_bleeding") == INDEX_NONE && NewUnitState.GetRupturedValue() > 0 )
-	{ Icons.AddItem("img:///UILibrary_UIFlagExtended.status_bleeding"); }		//{ Icons.AddItem("img:///gfxUnitFlag.shred_icon"); }
+	if ( Icons.Find(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Bleed) == INDEX_NONE && NewUnitState.GetRupturedValue() > 0 )
+	{ Icons.AddItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Bleed); }		//{ Icons.AddItem("img:///gfxUnitFlag.shred_icon"); }
 
 	//adding homing mine as a status icon .. also included in effect list above .. instead of RealizeClaymore in UnitFlag
-	if ( Icons.Find("img:///UILibrary_UIFlagExtended.status_homingmine") == INDEX_NONE && NewUnitState.AffectedByEffectNames.Find(class'X2Effect_HomingMine'.default.EffectName) != INDEX_NONE)
-	{ Icons.AddItem("img:///UILibrary_UIFlagExtended.status_homingmine"); }		//{ Icons.AddItem("img:///gfxUnitFlag.UnitFlag_IC0");	}
+	if ( Icons.Find(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Mined) == INDEX_NONE && NewUnitState.AffectedByEffectNames.Find(class'X2Effect_HomingMine'.default.EffectName) != INDEX_NONE)
+	{ Icons.AddItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Mined); }		//{ Icons.AddItem("img:///gfxUnitFlag.UnitFlag_IC0");	}
 
 	//Cascade Frost Icons, if frozen .. remove chillx ... if chill2 remove chill1
 	//this should mean we always only have the 'highest' chill icon 
-	if (Icons.Find("img:///UILibrary_UIFlagExtended.status_frozen") != INDEX_NONE)
+	if (Icons.Find(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Frozen[3]) != INDEX_NONE)
 	{
-		Icons.RemoveItem("img:///UILibrary_UIFlagExtended.status_chill3");
-		Icons.RemoveItem("img:///UILibrary_UIFlagExtended.status_chill2");
-		Icons.RemoveItem("img:///UILibrary_UIFlagExtended.status_chill1");
+		Icons.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Frozen[2]);
+		Icons.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Frozen[1]);
+		Icons.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Frozen[0]);
 	}
-	else if (Icons.Find("img:///UILibrary_UIFlagExtended.status_chill2") != INDEX_NONE)
+	else if (Icons.Find(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Frozen[2]) != INDEX_NONE)
 	{
-		Icons.RemoveItem("img:///UILibrary_UIFlagExtended.status_chill1");
+		Icons.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Frozen[1]);
+		Icons.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Frozen[0]);
+	}
+	else if (Icons.Find(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Frozen[1]) != INDEX_NONE)
+	{
+		Icons.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Frozen[0]);
 	}
 
 	// <> TODO : Add MindControl/Domination/Hacked icons ?

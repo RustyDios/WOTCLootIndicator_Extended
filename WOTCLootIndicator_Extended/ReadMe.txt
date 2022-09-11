@@ -214,6 +214,7 @@ UILibrary_UIFlagExtended.YA_ShieldS
 UILibrary_UIFlagExtended.YA_Will
 
 //ICONS FOR STATUS - MONO RED
+UILibrary_Common.status_bound					//used for all bind effects
 UILibrary_Common.status_burning
 UILibrary_Common.status_berserk					//used for ACID
 UILibrary_Common.status_poison
@@ -225,7 +226,6 @@ UILibrary_Common.status_stunned
 UILibrary_Common.status_mindcontrolled
 
 UILibrary_UIFlagExtended.status_bleeding		//used for bleeding and ruptured
-UILibrary_UIFlagExtended.status_frozen
 UILibrary_UIFlagExtended.status_homingmine		//used for exploding effects
 UILibrary_UIFlagExtended.status_immobile		//used for being carried
 UILibrary_UIFlagExtended.status_poisonChrys
@@ -233,6 +233,8 @@ UILibrary_UIFlagExtended.status_poisonChrys
 UILibrary_UIFlagExtended.status_chill1			//bitterfrost chill 
 UILibrary_UIFlagExtended.status_chill2			//bitterfrost chilled 
 UILibrary_UIFlagExtended.status_chill3			//frost munitions chill 
+UILibrary_UIFlagExtended.status_frozen
+
 UILibrary_UIFlagExtended.status_cursed			//mz perk pack cursed 
 UILibrary_UIFlagExtended.status_ripple			//claus ripple 
 
