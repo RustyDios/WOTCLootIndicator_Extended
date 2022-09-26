@@ -1386,6 +1386,9 @@ simulated protected function bool IsFullyInited ()
 		if (!Entry.Text.bIsInited) return false;
 	}
 
+	// Status Panel
+	if (!ExtendedStatusRowContainer.bIsInited) return false;
+	
 	return true;
 }
 
