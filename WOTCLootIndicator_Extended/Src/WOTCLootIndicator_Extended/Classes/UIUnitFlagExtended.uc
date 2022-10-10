@@ -2,7 +2,7 @@
 //  FILE:   UIUnitFlagExtended  by Xymanek && RustyDios
 //  
 //	File created	13/07/22	17:00
-//	LAST UPDATED	17/08/22	03:00
+//	LAST UPDATED	10/10/22	23:45
 //
 //	<> TODO : Rework && Update Y Shift value correctly
 //	<> TODO : Multiple Stat lines if the Stats Block excedes HealthBar length
@@ -82,10 +82,11 @@ simulated function InitFlag (StateObjectReference ObjectRef)
 		ObjectType = eFOT_Unit;
 	}
 
+	BuildExtendedStatusRow();
 	BuildLootIndicator();
 	BuildNameRow();
 	BuildStatsRow();
-	BuildExtendedStatusRow();
+
 }
 
 simulated function OnInit ()
@@ -95,7 +96,7 @@ simulated function OnInit ()
 	OnComponentPanelInited(self);
 }
 
-// Extracted from super.OnInit()
+// Extracted from super.OnInit(), this gets delayed until everything is ready
 simulated protected function DoInitialUpdate ()
 {
 	local XComGameState_BaseObject StartingState;
@@ -107,11 +108,35 @@ simulated protected function DoInitialUpdate ()
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//	REFRESH/UPDATE
+//	REFRESH/UPDATE 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// This function might get called before object is ready to rock and roll. has a !bIsInited return
+simulated function SetSelected(bool isSelected)
+{
+	// Expanded version of the same check as in super
+	if (!IsFullyInited()) return;
+
+	super.SetSelected(isSelected);
+}
+
+// This function might get called before object is ready to rock and roll. has a !bIsInited return
+//the manager responds to a game state before on init is called on this flag in a replay or a tutorial.
+//do not allow calls too early, because unit flag uses direct invoke which results in bad calls pre-init 
+simulated function RespondToNewGameState(XComGameState NewState, bool bForceUpdate = false)
+{
+	// Expanded version of the same check as in super
+	if (!IsFullyInited()) return;
+
+	super.RespondToNewGameState(NewState,bForceUpdate);
+}
 
 simulated function Update(XGUnit kNewActiveUnit)
 {
+	// Expanded version of the same check as in super
+	// If not shown or ready, leave. has a !bIsInited return
+	if (!IsFullyInited()) return;
+
 	super.Update(kNewActiveUnit);
 
 	//this checks if the colour bar(s) have been created yet .. once they have been created, set the colour correctly
@@ -121,9 +146,6 @@ simulated function Update(XGUnit kNewActiveUnit)
 
 simulated function UpdateFromState (XComGameState_BaseObject NewState, bool bInitialUpdate = false, bool bForceUpdate = false)
 {
-	// Expanded version of the same check as in super
-	if (!IsFullyInited()) return;
-
 	// We can never obfuscate destructible stats.
 	// If this is a unit, obfuscation may get enabled in UpdateFromUnitState before any of the values are actually updated
 	bObfuscate = false;
@@ -375,6 +397,7 @@ simulated protected function BuildNameRow ()
 		HudHeadIcon.SetX(class'WOTCLootIndicator_Extended'.default.NAME_OFFSET_X);
 
 		HudHeadIcon.SetForegroundColor(class'UIUtilities_Colors'.const.BLACK_HTML_COLOR);
+		HudHeadIcon.Hide();
 	}
 
 	// Make sure we will ever show names
@@ -408,6 +431,7 @@ simulated protected function UpdateNameRow (XComGameState_Unit NewUnitState)
 
 		HudHeadIcon.SetBGColor("0x" $ IconColour);
 		HudHeadIcon.LoadIconBG(class'UIUtilities_Image'.static.ValidateImagePath(IconString $"_bg"));
+		HudHeadIcon.Show();
 	}
 	
 	if (   ( m_bIsFriendly.GetValue() && class'WOTCLootIndicator_Extended'.default.SHOW_FRIENDS_NAME )
@@ -469,6 +493,7 @@ function InitStatusIcon(UIIcon StatusIcon, name InitName, string ImagePath)
 	StatusIcon.bAnimateOnInit = false;
 	StatusIcon.InitIcon(InitName, ImagePath, false, false);
 	StatusIcon.SetSize(class'WOTCLootIndicator_Extended'.default.ESTI_ICON_SIZE, class'WOTCLootIndicator_Extended'.default.ESTI_ICON_SIZE);
+	StatusIcon.Hide();
 }
 
 //cancel base game homing mine icon if we add it to the status row
@@ -1380,15 +1405,15 @@ simulated protected function bool IsFullyInited ()
 	// Flag itself
 	if (!bIsInited) return false;
 
+	// Status Panel
+	if (!ExtendedStatusRowContainer.bIsInited) return false;
+
 	// Stats text
 	foreach StatRowEntries(Entry)
 	{
 		if (!Entry.Text.bIsInited) return false;
 	}
 
-	// Status Panel
-	if (!ExtendedStatusRowContainer.bIsInited) return false;
-	
 	return true;
 }
 
