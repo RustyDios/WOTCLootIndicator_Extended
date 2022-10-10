@@ -2,7 +2,7 @@
 //  FILE:   UIUnitFlagExtended  by Xymanek && RustyDios
 //  
 //	File created	13/07/22	17:00
-//	LAST UPDATED	10/10/22	23:45
+//	LAST UPDATED	11/10/22	00:30
 //
 //	<> TODO : Rework && Update Y Shift value correctly
 //	<> TODO : Multiple Stat lines if the Stats Block excedes HealthBar length
@@ -279,7 +279,7 @@ simulated function SetShieldPoints( int _currentShields, int _maxShields )
 }
 
 //Technically NO CHANGE here now as Armor Text+Icon is a STAT BLOCK thing, Armour Pips are always shown ... 
-/*simulated function SetArmorPoints(optional int _iArmor = 0)
+simulated function SetArmorPoints(optional int _iArmor = 0)
 {
 	local ASValue myValue;
 	local Array<ASValue> myArray;
@@ -290,8 +290,7 @@ simulated function SetShieldPoints( int _currentShields, int _maxShields )
 
 	iMultiplier = `GAMECORE.HP_PER_TICK;
 
-	// <> TODO : Add options to display armor pips ?
-	if( m_bIsFriendly.GetValue() || `XPROFILESETTINGS.Data.m_bShowEnemyHealth )
+	if(class'WOTCLootIndicator_Extended'.default.SHOW_ARMOUR_PIPS && (m_bIsFriendly.GetValue() || `XPROFILESETTINGS.Data.m_bShowEnemyHealth) )
 	{
 		//Always round up for display when using the gamecore multiplier, per Jake's request. 
 		if( iMultiplier > 0 )
@@ -308,7 +307,6 @@ simulated function SetShieldPoints( int _currentShields, int _maxShields )
 			Invoke("ClearAllArmor");
 			Invoke("SetArmor", myArray);
 		}
-
 	}
 	else
 	{
@@ -316,7 +314,7 @@ simulated function SetShieldPoints( int _currentShields, int _maxShields )
 		Invoke("ClearAllArmor");
 	}
 
-}*/
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //	BUILD LOOT INDICATOR AND SHOW IF REQUIRED
@@ -493,7 +491,7 @@ function InitStatusIcon(UIIcon StatusIcon, name InitName, string ImagePath)
 	StatusIcon.bAnimateOnInit = false;
 	StatusIcon.InitIcon(InitName, ImagePath, false, false);
 	StatusIcon.SetSize(class'WOTCLootIndicator_Extended'.default.ESTI_ICON_SIZE, class'WOTCLootIndicator_Extended'.default.ESTI_ICON_SIZE);
-	StatusIcon.Hide();
+	StatusIcon.Hide(); // Gets shown when needed
 }
 
 //cancel base game homing mine icon if we add it to the status row
@@ -535,7 +533,7 @@ simulated function RealizeRupture(XComGameState_Unit NewUnitState)
 	myValue.b = NewUnitState.GetRupturedValue() > 0;
 	myArray.AddItem(myValue);
 
-	Invoke("SetShred", myArray);        //  <> TODO : - UI - rename this ? --- not a RustyNote, this is the flash function call
+	Invoke("SetShred", myArray);	//  <> TODO : - UI - rename this ? --- not a RustyNote, this is the flash function call
 }
 
 simulated function RealizeStatus(optional XComGameState_Unit NewUnitState = none)
@@ -575,6 +573,7 @@ simulated function RealizeStatus(optional XComGameState_Unit NewUnitState = none
 		//use new behaviour and nullify base game icon setting
 		AS_SetStatusIcon("");
 
+		//reset X position
 		StatusIconX = 0 - (class'WOTCLootIndicator_Extended'.default.ESTI_ICON_SIZE / 4) ;
 
 		//create or set new icons
