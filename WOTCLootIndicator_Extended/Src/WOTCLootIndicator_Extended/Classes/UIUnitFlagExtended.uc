@@ -769,15 +769,18 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 
             // Will has special handling for current/max, or percentage display /*and uses the will system*/ - removed if uses, so it allows enemies
 			case eStat_Will:
-				//if (m_bUsesWillSystem)	//this catches a case where non-will/shattered users get a massive -2134566827267 number
-				if (iCurrentValue < 1.00) { iCurrentValue = 0.00; }
+				//if (m_bUsesWillSystem)	
+				
+				//this catches a case where non-will/shattered users get a massive -2134566827267 number
+				if (iCurrentValue < 1) 		{ iCurrentValue = 0; }
 
 				if (class'WOTCLootIndicator_Extended'.default.SHOW_PERCENT_WILL)
 				{
-					//(value/total value) * 100%
-					WillPercent = (fCurrentValue / NewUnitState.GetMaxStat(eStat_Will)) * 100;
+					//(current value/max value) * 100%
+					WillPercent = (iCurrentValue / int(NewUnitState.GetMaxStat(eStat_Will))) * 100;
 
-					if (WillPercent < 1.00) { WillPercent = 0.00 ;}
+					if (WillPercent < 1.00) 	{ WillPercent = 0.00 ; 		}
+					if (WillPercent > 100.00) 	{ WillPercent = 100.00 ; 	}
 
 					Entry.SetValue(int(WillPercent) $ "%");
 				}
