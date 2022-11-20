@@ -777,7 +777,7 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 				if (class'WOTCLootIndicator_Extended'.default.SHOW_PERCENT_WILL)
 				{
 					//(current value/max value) * 100%
-					WillPercent = (iCurrentValue / int(NewUnitState.GetMaxStat(eStat_Will))) * 100;
+					WillPercent = (fCurrentValue / NewUnitState.GetMaxStat(eStat_Will)) * 100;
 
 					if (WillPercent < 1.00) 	{ WillPercent = 0.00 ; 		}
 					if (WillPercent > 100.00) 	{ WillPercent = 100.00 ; 	}
