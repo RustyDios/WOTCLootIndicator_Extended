@@ -138,10 +138,6 @@ simulated function Update(XGUnit kNewActiveUnit)
 	if (!IsFullyInited()) return;
 
 	super.Update(kNewActiveUnit);
-
-	//this checks if the colour bar(s) have been created yet .. once they have been created, set the colour correctly
-	TrySetHealthBarColour();
-	TrySetShieldBarColour();
 }
 
 simulated function UpdateFromState (XComGameState_BaseObject NewState, bool bInitialUpdate = false, bool bForceUpdate = false)
@@ -944,6 +940,9 @@ simulated protected function string GetBarColours_Health (XComGameState_Unit New
 	else if (NewUnitState.IsChosen() )	{ return "B6B3E3" ; }
 
 	//find and set team colour
+	IconString = "";
+	IconColour = "";
+
 	FindHUDIconDetails(IconString, IconColour);
 
 	return IconColour;
@@ -1043,6 +1042,9 @@ simulated protected function string GetBarColours_Shield (XComGameState_Unit New
 	}
 
 	//check for if team colours on .. find and set team colour
+	IconString = "";
+	IconColour = "";
+
 	FindHUDIconDetails(IconString, IconColour);
 
 	return IconColour;
