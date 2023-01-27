@@ -224,6 +224,8 @@ simulated function SetHitPoints (int _currentHP, int _maxHP)
 
 	// This handles both destructible and unit HP
 	SetHealthStatEntry(_currentHP, _maxHP);
+
+	UpdateBarColours_Health();
 }
 
 simulated function SetShieldPoints( int _currentShields, int _maxShields )
@@ -272,6 +274,8 @@ simulated function SetShieldPoints( int _currentShields, int _maxShields )
 	// Disable hitpoints preview visualization - sbatista 6/24/2013 [? more like set to merge HP/ShieldHP preview displays - RustyDios]
 	// <> TODO : Investigate if this is needed if ShieldHp <=0 
 	SetShieldPointsPreview();
+
+	UpdateBarColours_Shield();
 }
 
 //Technically NO CHANGE here now as Armor Text+Icon is a STAT BLOCK thing, Armour Pips are always shown ... 
@@ -948,10 +952,15 @@ simulated protected function string GetBarColours_Health (XComGameState_Unit New
 	return IconColour;
 }
 
-simulated protected function UpdateBarColours_Health (XComGameState_Unit NewUnitState)
+simulated protected function UpdateBarColours_Health (optional XComGameState_Unit NewUnitState)
 {
 	//only do the recolour of Health if it is a unit and set to do so by the config
 	if (ObjectType != eFOT_Unit || !class'WOTCLootIndicator_Extended'.default.HPBAR_COLOUR_BYTEAM )  { return; }
+
+	if (NewUnitState == none)
+	{
+		NewUnitState = XComGameState_Unit(`XCOMHISTORY.GetGameStateForObjectID(StoredObjectID));
+	}
 
 	//set colour
 	HealthBarColour.SetValue(GetBarColours_Health(NewUnitState));
@@ -1031,28 +1040,33 @@ simulated protected function string GetBarColours_Shield (XComGameState_Unit New
 	}
 
 	//colours for special units
-	if (NewUnitState.bIsSpecial) 		{ return "ACD373" ; }
-	else if (NewUnitState.IsChosen() )	{ return "B6B3E3" ; }
+	if (NewUnitState.bIsSpecial)	{ return "ACD373" ; }
+	if (NewUnitState.IsChosen() )	{ return "B6B3E3" ; }
 
-	//check for if team colours off .. set default
-	if (  (!m_bIsFriendly.GetValue() && !class'WOTCLootIndicator_Extended'.default.SHIELDBAR_COLOUR_BYTEAM_ENEMIES )
-		|| (m_bIsFriendly.GetValue() && !class'WOTCLootIndicator_Extended'.default.SHIELDBAR_COLOUR_BYTEAM_FRIENDS ) )
+	//check for if team colours on .. set default
+	if (  (!m_bIsFriendly.GetValue() && class'WOTCLootIndicator_Extended'.default.SHIELDBAR_COLOUR_BYTEAM_ENEMIES )
+		|| (m_bIsFriendly.GetValue() && class'WOTCLootIndicator_Extended'.default.SHIELDBAR_COLOUR_BYTEAM_FRIENDS ) )
 	{
-		return class'WOTCLootIndicator_Extended'.default.SHIELDBAR_COLOURHEX_DEFAULT; //default shield bar colour
+		//check for if team colours on .. find and set team colour
+		IconString = "";
+		IconColour = "";
+
+		FindHUDIconDetails(IconString, IconColour);
+
+		return IconColour;
 	}
 
-	//check for if team colours on .. find and set team colour
-	IconString = "";
-	IconColour = "";
-
-	FindHUDIconDetails(IconString, IconColour);
-
-	return IconColour;
+	return class'WOTCLootIndicator_Extended'.default.SHIELDBAR_COLOURHEX_DEFAULT; //default shield bar colour
 }
 
 //this had to be extended to check the shield bar has been created in flash before we try to recolour it
-simulated protected function UpdateBarColours_Shield (XComGameState_Unit NewUnitState)
+simulated protected function UpdateBarColours_Shield (optional XComGameState_Unit NewUnitState)
 {
+	if (NewUnitState == none)
+	{
+		NewUnitState = XComGameState_Unit(`XCOMHISTORY.GetGameStateForObjectID(StoredObjectID));
+	}
+
 	ShieldBarColour.SetValue(GetBarColours_Shield(NewUnitState));
 
 	if (ShieldBarColour.HasChanged())
