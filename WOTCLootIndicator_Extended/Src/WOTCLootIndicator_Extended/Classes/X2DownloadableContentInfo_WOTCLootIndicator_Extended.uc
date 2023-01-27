@@ -96,6 +96,7 @@ simulated function RemoveOldUnitFlag(StateObjectReference kUnitRef, bool bDetail
 		if ( kFlag != none)
 		{
 			`PRES.m_kUnitFlagManager.RemoveFlag(kFlag);
+			kFlag.Destroy();
 			if (bDetailLog) { class'Helpers'.static.OutputMsg("OLD FLAG WAS FOUND AND REMOVED"); }
 		}
 	}
