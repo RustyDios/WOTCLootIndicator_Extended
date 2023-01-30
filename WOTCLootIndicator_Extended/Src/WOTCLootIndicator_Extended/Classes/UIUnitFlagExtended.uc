@@ -279,7 +279,8 @@ simulated function SetShieldPoints( int _currentShields, int _maxShields )
 	SetShieldPointsPreview();
 }
 
-//Technically NO CHANGE here now as Armor Text+Icon is a STAT BLOCK thing, Armour Pips are always shown ... 
+//Technically NO CHANGE here now as Armor Text+Icon is a STAT BLOCK thing, Armour Pips are always shown ...
+//ArmorPips get fed in NewUnitState.GetArmorMitigationForUnitFlag() which is stat + effects
 simulated function SetArmorPoints(optional int _iArmor = 0)
 {
 	local ASValue myValue;
@@ -748,7 +749,6 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 			case eStat_Hacking:
 			case eStat_PsiOffense:
 			case eStat_ShieldHP:
-			case eStat_ArmorMitigation:
 			case eStat_ArmorChance:
 			case eStat_ArmorPiercing:
 			case eStat_CritChance:
@@ -756,6 +756,13 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 			case eStat_FlankingAimBonus:
 			case eStat_DetectionRadius:
 			case eStat_SightRadius:
+				Entry.SetValue(iCurrentValue);
+			break;
+
+			// Armour has special handling as the pips use a combination of stat+effect
+			case eStat_ArmorMitigation:
+				fCurrentValue = NewUnitState.GetArmorMitigationForUnitFlag();
+				iCurrentValue = int(fCurrentValue);
 				Entry.SetValue(iCurrentValue);
 			break;
 
@@ -780,8 +787,9 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 					//(current value/max value) * 100%
 					WillPercent = (fCurrentValue / NewUnitState.GetMaxStat(eStat_Will)) * 100;
 
+					//handle overflow?
 					if (WillPercent < 1.00) 	{ WillPercent = 0.00 ; 		}
-					if (WillPercent > 100.00) 	{ WillPercent = 100.00 ; 	}
+					if (WillPercent > 99.00) 	{ WillPercent = 100.00 ; 	}
 
 					Entry.SetValue(int(WillPercent) $ "%");
 				}
