@@ -2,7 +2,7 @@
 //  FILE:   UIUnitFlagExtended_StatEntry  by Xymanek && RustyDios
 //  
 //	File created	13/07/22	17:00
-//	LAST UPDATED	13/07/22	19:30
+//	LAST UPDATED	28/03/23	02:30
 //
 //=================================================================
 
@@ -22,24 +22,27 @@ simulated function InitStatEntry (StatRowEntryDefinition InDefinition)
 
 	InitPanel(Definition.BlockName);
 
-	// UIIcon should not be needed, but UIImage causes the icon to be slightly shifted upwards
-	// and I'm not really interested in digging through the various existing values to figure this out
-	//Icon = Spawn(class'UIImage', self);
-	//Icon.bAnimateOnInit = false;
-	//Icon.InitImage('Icon', Definition.IconPath);
-	//Icon.SetSize(Height, Height);
+	// Xymanek: UIIcon should not be needed, but UIImage causes the icon to be slightly shifted upwards and 
+	//	I'm not really interested in digging through the various existing values to figure this out
+
+	// RustyDios: UIIcon IS needed as it splits the forground outline and background colours so they can be easily tinted
 
 	Icon = Spawn(class'UIIcon', self);
 	Icon.bDisableSelectionBrackets = true;
 	Icon.bAnimateOnInit = false;
-	Icon.InitIcon('Icon', Definition.IconPath, false, false, Height);
+	Icon.bIsNavigable = false;
+	Icon.InitIcon('Icon', Definition.IconPath, false, true, Height);
 
+	//Needs to load AFTER the colour has been set
+	//Icon.LoadIconBG(class'UIUtilities_Image'.static.ValidateImagePath(Definition.IconPath $"_bg"));
+	Icon.SetY(Icon.Y + 2);
+	
 	Text = Spawn(class'UIText', self);
 	Text.bAnimateOnInit = false;
 	Text.InitText('Text');
-	Text.TextSizeRealized = true; // By default there is no text, so we know the width
+	Text.TextSizeRealized = true; // By default there is no text, so we don't know the width
 	Text.OnTextSizeRealized = OnTextSizeRealized;
-	Text.SetX(Icon.Width + 2);
+	Text.SetX(Icon.Width);
 }
 
 simulated protected function OnTextSizeRealized ()
@@ -47,6 +50,17 @@ simulated protected function OnTextSizeRealized ()
 	Width = Text.X + Text.Width;
 
 	if (OnSizeRealized != none) OnSizeRealized();
+}
+
+simulated function SetIconColour(string IconColour)
+{
+	//initially Definition IconColour should be "", this should ensure we only set the colours once/if they change
+	if (Definition.IconColour != IconColour)
+	{
+		Definition.IconColour = IconColour;
+		Icon.SetBGColor("0x" $ IconColour);
+		Icon.LoadIconBG(class'UIUtilities_Image'.static.ValidateImagePath(Definition.IconPath $"_bg"));
+	}
 }
 
 simulated function SetValue (coerce string strValueUnformatted)

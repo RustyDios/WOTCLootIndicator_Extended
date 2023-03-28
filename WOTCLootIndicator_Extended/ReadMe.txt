@@ -7,7 +7,7 @@ A copy of WOTCLootIndicator (Additional Icons) with my personal additions and ed
 These edits include;
 	 ALL stat options
 	 CHL focus bars (samurai, akimbo, proficiency heroes)
-	 Team Coloured Health/shield/will Bars.
+	 Team Coloured Health/shield/will Bars, Stat Icons
 Also fixes up;
 	positional shifts for all rulers (viperking, zerkerQ, a-king, cx-q, cotk) and for binds of vipers, king, a-king grab and modded enemies
 	damage stat respects breakthoughs
@@ -26,10 +26,11 @@ This mod, like the two it is based upon, expands the 'UI Unit Flag' display to h
 By default it will display Loot, Damage, Aim, Defence, Mobility, Will and Health.
 
 [h1]That sounds just like the other versions ... what's new?[/h1]
-Well, first is the inclusion of all stats, Loot, Damage, Aim, Defence, Mobility, Dodge, Hack, Will, Health, Psi Offense, Shields and Armour. You can toggle by config whatever you want.
+Well, first is the inclusion of all stats, Loot, Damage, Aim, Defence, Mobility, Dodge, Hack, Will, Health, Psi Offense, Shields and Armour. You can toggle by config whatever you want. You can also set to display on multiple lines (on by default).
 [list]
 [*]I have made a new set of icons for all stats, except loot, which is a re-scale of the original.
 [*]Each stat text can now be individually coloured
+[*]Each stat icon can now be coloured
 [*]Mobility can be displayed as the stat or 'in tiles'. Defaults to stat.
 [*]Will can be displayed as actual stat or % of max. Defaults to %.
 [*]Health can be displayed as current/max or just current.
@@ -49,7 +50,7 @@ This should help show damage for melee enemies like Faceless and Chryssalids.
 
 [*]The WOTC Will bar can now be toggled on/off and recoloured.
 [*]The Health and Shield bars can be hidden for both enemies and friendlies.
-[*]The Health and Shield bars can be recoloured to the team colour. 
+[*]The Health and Shield bars can be recoloured to the team colour.
 By default the health bar is coloured and enemy shields.
 [url=https://steamcommunity.com/sharedfiles/filedetails/?id=2481645156] Frost Legion [/url] Damage Reduction Shields are now 'frosty' blue.
 Rulers have individual colour settings for their Healthbars. Defaults in the screenshots.
@@ -179,11 +180,11 @@ ECharStatType 's I could find
 // ================================================================================================================================================================
 // ================================================================================================================================================================
 
-//ICONS FOR UNIT FLAG
+//ICONS FOR UNIT FLAG, THESE ARE SPLIT INTO OUTLINE AND BACKGROUND THE BACKGROUND FILES ARE THE SAME NAME WITH [_bg] APPENDED
 UILibrary_UIFlagExtended.UIFlag_Aim
+UILibrary_UIFlagExtended.UIFlag_Armor
+UILibrary_UIFlagExtended.UIFlag_Armor2
 UILibrary_UIFlagExtended.UIFlag_ArmorP
-UILibrary_UIFlagExtended.UIFlag_Armour
-UILibrary_UIFlagExtended.UIFlag_Armour2
 UILibrary_UIFlagExtended.UIFlag_CoverBlue
 UILibrary_UIFlagExtended.UIFlag_CoverYellow
 UILibrary_UIFlagExtended.UIFlag_Damage

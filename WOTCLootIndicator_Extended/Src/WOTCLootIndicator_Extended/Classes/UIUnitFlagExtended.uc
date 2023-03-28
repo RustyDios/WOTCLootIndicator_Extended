@@ -2,7 +2,7 @@
 //  FILE:   UIUnitFlagExtended  by Xymanek && RustyDios
 //  
 //	File created	13/07/22	17:00
-//	LAST UPDATED	15/02/23    00:45
+//	LAST UPDATED	28/03/23	02:30
 //
 //	<> TODO : Rework && Update Y Shift value correctly
 //	<> TODO : Multiple Stat lines if the Stats Block excedes HealthBar length
@@ -47,6 +47,8 @@ var array<UIIcon> StatusIcons;
 
 var protected bool bLayoutRealizePending, bLootIndicatorScanned, bHealthBarCreated, bCheckAndSetHealthBarColour, bShieldBarCreated, bCheckAndSetShieldBarColour;
 
+var string HUDIconString, HUDIconColour;
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //	INIT
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -86,6 +88,10 @@ simulated function InitFlag (StateObjectReference ObjectRef)
 	BuildLootIndicator();
 	BuildNameRow();
 	BuildStatsRow();
+
+	//doing this once here instead of multiple times throughout the file
+	HUDIconString = ""; HUDIconColour = "";
+	FindHUDIconDetails(HUDIconString, HUDIconColour);
 }
 
 simulated function OnInit ()
@@ -153,6 +159,7 @@ simulated function UpdateFromState (XComGameState_BaseObject NewState, bool bIni
 
 	super.UpdateFromState(NewState, bInitialUpdate, bForceUpdate);
 
+	// This refreshes the layout on a change from ShieldsHP or Focus
 	RealizeExtendedLayout();
 }
 
@@ -175,6 +182,10 @@ simulated function UpdateFromUnitState (XComGameState_Unit NewUnitState, bool bI
 	UpdateBarColours_Health(NewUnitState);
 	UpdateBarColours_Shield(NewUnitState);
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//	SET STATS - OVERRIDE VANILLA FUNCTIONS
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 simulated function SetHitPoints (int _currentHP, int _maxHP)
 {
@@ -419,18 +430,15 @@ simulated protected function BuildNameRow ()
 
 simulated protected function UpdateNameRow (XComGameState_Unit NewUnitState)
 {
-	local string strUnitName, IconString, IconColour;
-
-	//Find and set colour
-	FindHUDIconDetails(IconString, IconColour);
+	local string strUnitName;
 
 	if (HudHeadIcon != none)
 	{
 		//HudHeadIcon.SetForegroundColor(class'UIUtilities_Colors'.const.BLACK_HTML_COLOR);
-		HudHeadIcon.LoadIcon(class'UIUtilities_Image'.static.ValidateImagePath(IconString));
+		HudHeadIcon.LoadIcon(class'UIUtilities_Image'.static.ValidateImagePath(HUDIconString));
 
-		HudHeadIcon.SetBGColor("0x" $ IconColour);
-		HudHeadIcon.LoadIconBG(class'UIUtilities_Image'.static.ValidateImagePath(IconString $"_bg"));
+		HudHeadIcon.SetBGColor("0x" $ HUDIconColour);
+		HudHeadIcon.LoadIconBG(class'UIUtilities_Image'.static.ValidateImagePath(HUDIconString $"_bg"));
 		HudHeadIcon.Show();
 	}
 	
@@ -442,7 +450,7 @@ simulated protected function UpdateNameRow (XComGameState_Unit NewUnitState)
 		strUnitName = GetUnitDisplayedName(NewUnitState);
 		strUnitName = class'UIUtilities_Text'.static.AddFontInfo(strUnitName, false, false, false, class'WOTCLootIndicator_Extended'.default.NAME_FONT_SIZE);
 		strUnitName = class'UnitFlagExtendedHelpers'.static.ColourText(
-			strUnitName, class'WOTCLootIndicator_Extended'.default.NAME_COLOUR_BYTEAM ? IconColour : class'WOTCLootIndicator_Extended'.default.NAME_COLOURHEX );
+			strUnitName, class'WOTCLootIndicator_Extended'.default.NAME_COLOUR_BYTEAM ? HUDIconColour : class'WOTCLootIndicator_Extended'.default.NAME_COLOURHEX );
 
 		UnitNameText.SetHtmlText(strUnitName);
 		class'UnitFlagExtendedHelpers'.static.AddShadowToTextField(UnitNameText);
@@ -541,7 +549,7 @@ simulated function RealizeRupture(XComGameState_Unit NewUnitState)
 simulated function RealizeStatus(optional XComGameState_Unit NewUnitState = none)
 {
 	local array<string> Icons;
-	local int i, StatusIconX;
+	local int i, StatusIconX, StatusIconY;
 
 	if( NewUnitState == none ) { NewUnitState = XComGameState_Unit(History.GetGameStateForObjectID(StoredObjectID)); }
 
@@ -577,6 +585,7 @@ simulated function RealizeStatus(optional XComGameState_Unit NewUnitState = none
 
 		//reset X position
 		StatusIconX = 0 - (class'WOTCLootIndicator_Extended'.default.ESTI_ICON_SIZE / 4) ;
+		StatusIconY = 22;
 
 		//create or set new icons
 		//yes this happens on the realize as the icons need to refresh too
@@ -593,8 +602,19 @@ simulated function RealizeStatus(optional XComGameState_Unit NewUnitState = none
 			}
 			
 			//space correctly and show
-			StatusIcons[i].SetPosition(StatusIconX, 22);
+			StatusIcons[i].SetPosition(StatusIconX, StatusIconY);
 			StatusIconX += class'WOTCLootIndicator_Extended'.default.ESTI_ICON_SIZE - (class'WOTCLootIndicator_Extended'.default.ESTI_ICON_SIZE / 4) ;
+
+			//create and place on new row if needed
+			if (StatusIconX > class'WOTCLootIndicator_Extended'.default.iMAXSTATWIDTH)
+			{
+				StatusIconX = 0 - (class'WOTCLootIndicator_Extended'.default.ESTI_ICON_SIZE / 4) ;
+				StatusIconY += class'WOTCLootIndicator_Extended'.default.ESTI_ICON_SIZE;
+
+				StatusIcons[i].SetPosition(StatusIconX, StatusIconY);
+				StatusIconX += class'WOTCLootIndicator_Extended'.default.ESTI_ICON_SIZE - (class'WOTCLootIndicator_Extended'.default.ESTI_ICON_SIZE / 4) ;
+			}
+
 			StatusIcons[i].Show();
 		}
 
@@ -648,7 +668,7 @@ simulated protected function BuildStatsRow ()
 		EntryDef.BlockName = 'Damage';
 		EntryDef.Type = eSRET_Damage;
 		EntryDef.IconPath = class'WOTCLootIndicator_Extended'.default.SHOW_DMG_ICONPATH; //"UILibrary_UIFlagExtended.UIFlag_Damage";
-		EntryDef.HexColour = class'WOTCLootIndicator_Extended'.default.SHOW_DMG_COLOURHEX;
+		EntryDef.HexColour = class'WOTCLootIndicator_Extended'.default.TEXT_COLOUR_BYTEAM ? HUDIconColour : class'WOTCLootIndicator_Extended'.default.SHOW_DMG_COLOURHEX;
 		EntryDef.bCanObsfucate = class'WOTCLootIndicator_Extended'.default.SHOW_DMG_OBFUSCATE;
 		//EntryDef.SpecialTriggerID = BlockDef.SpecialTriggerID; // not needed/ none
 
@@ -666,7 +686,7 @@ simulated protected function BuildStatsRow ()
 		EntryDef.Type = eSRET_UnitStat;
 		EntryDef.Stat = BlockDef.Stat;
 		EntryDef.IconPath = BlockDef.IconPath;
-		EntryDef.HexColour = BlockDef.HexColour;
+		EntryDef.HexColour = class'WOTCLootIndicator_Extended'.default.TEXT_COLOUR_BYTEAM ? HUDIconColour : BlockDef.HexColour;
 		EntryDef.bCanObsfucate = bool(BlockDef.bCanObsfucate);
 		EntryDef.SpecialTriggerID = BlockDef.SpecialTriggerID;
 
@@ -816,6 +836,8 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 						@"\n ID		:" $Entry.Definition.SpecialTriggerID
 					, class'WOTCLootIndicator_Extended'.default.bRustyUIFlagLog,'WOTC_RUSTY_UIFLAG');
 		}
+
+		UpdateStatEntryIconColour(Entry);
 	}
 }
 
@@ -842,6 +864,8 @@ simulated protected function UpdateUnitDamageStat (XComGameState_Unit NewUnitSta
 				Entry.SetValue(DamageString.GetValue());
 			}
 		}
+
+		UpdateStatEntryIconColour(Entry);
 	}
 }
 
@@ -874,6 +898,24 @@ simulated protected function SetHealthStatEntry (int _currentHP, int _maxHP)
 
 			Entry.SetValue(strValue);
 		}
+
+		UpdateStatEntryIconColour(Entry);
+	}
+}
+
+simulated protected function UpdateStatEntryIconColour(UIUnitFlagExtended_StatEntry Entry)
+{
+	if (class'WOTCLootIndicator_Extended'.default.ICONS_COLOUR_BYTEXT)
+	{
+		Entry.SetIconColour(Entry.Definition.HexColour);
+	}
+	else if (class'WOTCLootIndicator_Extended'.default.ICONS_COLOUR_BYTEAM)
+	{
+		Entry.SetIconColour(HUDIconColour);
+	}
+	else
+	{
+		Entry.SetIconColour("BF1E2E"); //default to red
 	}
 }
 
@@ -938,7 +980,6 @@ simulated protected function bool TryObsfucate (UIUnitFlagExtended_StatEntry Ent
 simulated protected function string GetBarColours_Health (XComGameState_Unit NewUnitState)
 {
 	local SpecialBarColour SetSpecialBarColour;
-	local string IconString, IconColour;
 
 	//direct overrides per set template name
 	foreach class'WOTCLootIndicator_Extended'.default.SpecialBarColours_Health(SetSpecialBarColour)
@@ -952,13 +993,7 @@ simulated protected function string GetBarColours_Health (XComGameState_Unit New
 	if (NewUnitState.bIsSpecial) 	{ return "ACD373" ; }
 	if (NewUnitState.IsChosen())	{ return "B6B3E3" ; }
 
-	//find and set team colour
-	IconString = "";
-	IconColour = "";
-
-	FindHUDIconDetails(IconString, IconColour);
-
-	return IconColour;
+	return HUDIconColour;
 }
 
 simulated protected function UpdateBarColours_Health (optional XComGameState_Unit NewUnitState)
@@ -1030,7 +1065,6 @@ simulated function TrySetHealthBarColour(optional bool bWasSpecial)
 simulated protected function string GetBarColours_Shield (XComGameState_Unit NewUnitState)
 {
 	local SpecialBarColour SetSpecialBarColour;
-	local string IconString, IconColour;
 
 	//Override frosty shields above all else
 	if ( class'WOTCLootIndicator_Extended'.default.SHIELDBAR_COLOUR_FROSTLEGION && NewUnitState.HasAbilityFromAnySource('MZ_FDIceShield') )
@@ -1056,13 +1090,7 @@ simulated protected function string GetBarColours_Shield (XComGameState_Unit New
 	if ( (class'WOTCLootIndicator_Extended'.default.SHIELDBAR_COLOUR_BYTEAM_ENEMIES && !m_bIsFriendly.GetValue() )
 	  || (class'WOTCLootIndicator_Extended'.default.SHIELDBAR_COLOUR_BYTEAM_FRIENDS && m_bIsFriendly.GetValue() ) )
 	{
-		//check for if team colours on .. find and set team colour
-		IconString = "";
-		IconColour = "";
-
-		FindHUDIconDetails(IconString, IconColour);
-
-		return IconColour;
+		return HUDIconColour;
 	}
 
 	// in all other cases set default shield bar colour
@@ -1264,7 +1292,7 @@ simulated function RealizeViperBind(XComGameState_Unit NewUnitState)
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// THIS FUNCTION CONTROLS THE COVER SHIELD OVERRIDDEN HERE SO THAT CLIBANARIUS HAS A CONFIG OPTION TO HIDE IT
+// THIS FUNCTION CONTROLS THE COVER SHIELD, OVERRIDDEN HERE SO THAT CLIBANARIUS HAS A CONFIG OPTION TO HIDE IT
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 simulated function RealizeCover(optional XComGameState_Unit UnitState = none, optional int HistoryIndex = INDEX_NONE)
@@ -1309,22 +1337,37 @@ simulated function OnStatEntrySizeRealized ()
 simulated protected function DoRealizeExtendedLayout ()
 {
 	local UIUnitFlagExtended_StatEntry Entry;
-	local float RollingX, RollingY;
+	local float RollingX, RollingY, OffsetY;
 	local bool bHasStatEntries;
+	local int i, iRows;
 
 	bLayoutRealizePending = false;
 
-	RollingY = class'WOTCLootIndicator_Extended'.default.STAT_OFFSET_Y + GetYShift();
+	OffsetY = class'WOTCLootIndicator_Extended'.default.STAT_OFFSET_Y + GetYShift();
+	RollingY = 0;
 	RollingX = 0;
+	iRows = 0;
 
 	foreach StatRowEntries(Entry)
 	{
 		//early bailout if not visible anyway
 		if (!Entry.bIsVisible) { continue; }
 
-		Entry.SetX(RollingX);
+		Entry.SetPosition(RollingX, RollingY);
 
-		RollingX += Entry.Width + 3;
+		RollingX += Entry.Width + 4;
+
+		//DO WE TRIGGER ANOTHER ROW?
+		if (RollingX > class'WOTCLootIndicator_Extended'.default.iMAXSTATWIDTH)
+		{
+			RollingX = 0;
+			RollingY += class'WOTCLootIndicator_Extended'.default.INFO_ICON_SIZE;
+			iRows++;
+	
+			Entry.SetPosition(RollingX, RollingY);
+			RollingX += Entry.Width + 4;
+		}
+
 		bHasStatEntries = true;
 	}
 
@@ -1334,14 +1377,21 @@ simulated protected function DoRealizeExtendedLayout ()
 	}
 	else
 	{
-		StatRowContainer.Show();
-		StatRowContainer.SetY(RollingY);
+		//BUMPS UP FOR EACH ADDITIONAL ROW
+		for (i = 0 ; i < iRows ; i++)
+		{
+			OffsetY -= class'WOTCLootIndicator_Extended'.default.INFO_ICON_SIZE;
+		}
 
-		RollingY -= class'WOTCLootIndicator_Extended'.default.INFO_ICON_SIZE;
+		StatRowContainer.SetY(OffsetY);
+		StatRowContainer.Show();
+
+		//BUMPS UP ABOVE INITIAL STATS ROW
+		OffsetY -= class'WOTCLootIndicator_Extended'.default.INFO_ICON_SIZE;
 	}
 
-	if (HudHeadIcon != none) HudHeadIcon.SetY(RollingY);
-	if (UnitNameText != none) UnitNameText.SetY(RollingY);
+	if (HudHeadIcon != none) HudHeadIcon.SetY(OffsetY);
+	if (UnitNameText != none) UnitNameText.SetY(OffsetY);
 }
 
 // TODO: Rework this

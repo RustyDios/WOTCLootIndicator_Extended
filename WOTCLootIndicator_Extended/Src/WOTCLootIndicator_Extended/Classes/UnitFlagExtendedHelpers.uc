@@ -2,7 +2,7 @@
 //  FILE:   UnitFlagExtendedHelpers  by Xymanek && RustyDios
 //  
 //	File created	13/07/22	17:00
-//	LAST UPDATED	17/08/22	03:30
+//	LAST UPDATED	28/03/23	02:30
 //
 //=============================================================
 
@@ -18,6 +18,7 @@ struct StatsBlock
 {
     var string BlockName;
     var string IconPath;
+	var string IconColour;
     var string HexColour;
     var ECharStatType Stat;
     var int bCanObsfucate;
@@ -31,6 +32,7 @@ struct StatRowEntryDefinition
     var ECharStatType Stat;
 
     var string IconPath;
+	var string IconColour;
     var string HexColour;
     
 	var bool bCanObsfucate;
