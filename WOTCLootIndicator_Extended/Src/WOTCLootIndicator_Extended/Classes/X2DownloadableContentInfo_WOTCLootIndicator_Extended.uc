@@ -68,7 +68,7 @@ exec function RustyFix_UFE_RefreshUnitFlagOfActiveUnit()
     if(ActiveUnit != none)
 	{
 		Unit = XComGameState_Unit(NewGameState.ModifyStateObject(class'XComGameState_Unit', ActiveUnit.ObjectID));
-		
+
 		RemoveOldUnitFlag(Unit.GetReference(), true);
 		AddNewUnitFlag(Unit.GetReference(), true);
 

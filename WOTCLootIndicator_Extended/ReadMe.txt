@@ -26,7 +26,10 @@ This mod, like the two it is based upon, expands the 'UI Unit Flag' display to h
 By default it will display Loot, Damage, Aim, Defence, Mobility, Will and Health.
 
 [h1]That sounds just like the other versions ... what's new?[/h1]
-Well, first is the inclusion of all stats, Loot, Damage, Aim, Defence, Mobility, Dodge, Hack, Will, Health, Psi Offense, Shields and Armour. You can toggle by config whatever you want. You can also set to display on multiple lines (on by default).
+Well, first is the inclusion of all stats, Loot, Damage, Aim, Defence, Mobility, Dodge, Hack, Will, Health, Psi Offense, Shields and Armour.
+You can toggle by config whatever you want.
+You can also set to display on multiple lines if it exceeds the bar length(on by default).
+
 [list]
 [*]I have made a new set of icons for all stats, except loot, which is a re-scale of the original.
 [*]Each stat text can now be individually coloured
@@ -95,46 +98,57 @@ Project is hosted on GitHub [url=https://github.com/RustyDios/WOTCLootIndicator_
 // ================================================================================================================================================================
 // ================================================================================================================================================================
 
-			//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-			// allow mods to change the show/hide behavior	
-			//	SENT FROM UI Unit Flag Extended
-			Tuple = new class'LWTuple';
-			Tuple.Id = 'UIUnitFlag_OverrideShowInfo';
-			Tuple.Data.Add(2);
-			Tuple.Data[0].kind = LWTVObject;	// The targeted unit.
-			Tuple.Data[0].o = UnitState;
-			Tuple.Data[1].kind = LWTVBool;		// Whether the info should be available.
-			Tuple.Data[1].b = true;
+	//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	// allow mods to change the show/hide behavior	
+	//	SENT FROM UI Unit Flag Extended
+	Tuple = new class'LWTuple';
+	Tuple.Id = 'UIUnitFlag_OverrideShowInfo';
+	Tuple.Data.Add(2);
+	Tuple.Data[0].kind = LWTVObject;	// The targeted unit.
+	Tuple.Data[0].o = UnitState;
+	Tuple.Data[1].kind = LWTVBool;		// Whether the info should be available.
+	Tuple.Data[1].b = true;
 
-			`XEVENTMGR.TriggerEvent('UIUnitFlag_OverrideShowInfo', Tuple);
-			//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	`XEVENTMGR.TriggerEvent('UIUnitFlag_OverrideShowInfo', Tuple);
+	//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-			//a HIDE return should set the data false, we flip it here, so that bObfuscate = true
-			//thus a query to !bObfuscate will be true later stats obfuscated actually get hidden/never added
-			bObfuscate.SetValue(!Tuple.Data[1].b);	
+	//a HIDE return should set the data false, we flip it here, so that bObfuscate = true
+	//thus a query to !bObfuscate will be true later stats obfuscated actually get hidden/never added
+	bObfuscate.SetValue(!Tuple.Data[1].b);	
 
 // ================================================================================================================================================================
 // ================================================================================================================================================================
 
-			//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-			// allow mods to change the shown string for a stats config entry
-			//	SENT FROM UI Unit Flag Extended
-			NSLWTuple = new class'LWTuple';
-			NSLWTuple.Id = 'UIUnitFlag_AddDisplayInfo';
-			NSLWTuple.Data.Add(1);
-			NSLWTuple.Data[0].kind = LWTVString;	// What the info should be
-			NSLWTuple.Data[0].s = "";
-			//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	// allow mods to change the shown string for a stats config entry
+	//	SENT FROM UI Unit Flag Extended
+	NSLWTuple = new class'LWTuple';
+	NSLWTuple.Id = 'UIUnitFlag_AddDisplayInfo';
+	NSLWTuple.Data.Add(3);
+	NSLWTuple.Data[0].kind = LWTVObject;	// Sending the UnitFlag
+	NSLWTuple.Data[0].o = self;
+	NSLWTuple.Data[1].kind = LWTVString;	// What the info should be
+	NSLWTuple.Data[1].s = "";
+	NSLWTuple.Data[2].kind = LWTVBool;		// Should this trigger once
+	NSLWTuple.Data[2].b = false;
+	//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 [WOTCLootIndicator_Extended.WOTCLootIndicator_Extended]
 ; stats  unique named PAIR           icon image path without the img:///    text colour         stat to display		hide in YAF1AR   	Special call for other mods to find the string data
-+StatsToShow=(BlockName="NSLW_1",    IconPath="UILibrary_NSLW.UINSLW_1",    HexColour="9ACBCB", Stat=,     			bCanObsfucate=1, 	SpecialTriggerID=NSLWTrigger   )
++StatsToShow=(BlockName="NSLW_1",    IconPath="UILibrary_NSLW.UINSLW_1",    HexColour="9ACBCB", Stat=eStat_Invalid,	bCanObsfucate=1, 	SpecialTriggerID=NSLWTrigger   )
 
 so for OTHER mods to enable new stats they need to include a >> XComWOTCLootIndicator_Extended.ini << with the above header and config entry
 the SpecialTriggerID is called and the above tuple is sent out with 
     `XEVENTMGR.TriggerEvent(SpecialTriggerID, NSLWTuple, UnitState );
 
 Most of the displayed stat entry will come from the config entry, but the text display will come from the tuple result
+The UFE is set to handle all the ECharStatType from X2TacticalGameRulesetDataStructures, even those with no current icon or default entry
+  so you might not even NEED a special trigger, just a line for the stat .. in which case set that stat in the "stat to display" field
+  Otherwise it is important for Triggered text lines for the Stat=eStat_Invalid to remain, even if you want to report a valid stat
+
+If the stat type is eStat_Invalid and the entry is obfuscated it will display as "#?#"
+
+An example listener is included in the mod, see the X2EventListener_UFEGetDamage.uc
 
 // ================================================================================================================================================================
 // ================================================================================================================================================================

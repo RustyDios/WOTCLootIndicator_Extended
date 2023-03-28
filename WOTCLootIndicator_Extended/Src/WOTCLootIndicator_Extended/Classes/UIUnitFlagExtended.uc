@@ -2,7 +2,7 @@
 //  FILE:   UIUnitFlagExtended  by Xymanek && RustyDios
 //  
 //	File created	13/07/22	17:00
-//	LAST UPDATED	28/03/23	10:30
+//	LAST UPDATED	28/03/23	19:00
 //
 //	<> TODO : Rework && Update Y Shift value correctly
 //	<> TODO : Multiple Stat lines if the Stats Block excedes HealthBar length
@@ -27,6 +27,7 @@ var EFlagObjectType ObjectType;
 
 var bool bObfuscate;
 
+//used for the damage display
 var int m_BreakthroughBonuses;
 var bool m_BreakthroughBonusesFound;
 
@@ -84,14 +85,14 @@ simulated function InitFlag (StateObjectReference ObjectRef)
 		ObjectType = eFOT_Unit;
 	}
 
+	//doing this once here instead of multiple times throughout the file
+	HUDIconString = ""; HUDIconColour = "";
+	FindHUDIconDetails(HUDIconString, HUDIconColour);
+
 	BuildExtendedStatusRow();
 	BuildLootIndicator();
 	BuildNameRow();
 	BuildStatsRow();
-
-	//doing this once here instead of multiple times throughout the file
-	HUDIconString = ""; HUDIconColour = "";
-	FindHUDIconDetails(HUDIconString, HUDIconColour);
 }
 
 simulated function OnInit ()
@@ -176,7 +177,7 @@ simulated function UpdateFromUnitState (XComGameState_Unit NewUnitState, bool bI
 	UpdateLootIndicator(NewUnitState);
 	UpdateNameRow(NewUnitState);
 
-	UpdateUnitDamageStat(NewUnitState);
+	//UpdateUnitDamageStat(NewUnitState);	//DEPRICIATED
 	UpdateUnitStats(NewUnitState);
 
 	UpdateBarColours_Health(NewUnitState);
@@ -650,7 +651,7 @@ simulated protected function BuildStatsRow ()
 	local StatRowEntryDefinition EntryDef, EmptyDef;
 	local StatsBlock BlockDef;
 
-	//bail if not a unit or destructible needing a flag
+	//bail if not a unit or not a destructible needing a HP Only flag
 	if (ObjectType != eFOT_Unit && ObjectType != eFOT_Destructible) return;
 
 	//create a container for the stats icons and texts
@@ -662,11 +663,13 @@ simulated protected function BuildStatsRow ()
 	StatRowContainer.SetX(class'WOTCLootIndicator_Extended'.default.STAT_OFFSET_X);
 
 	//add the special section for damage preview - always first
+	//DEPRICIATED
 	if (class'WOTCLootIndicator_Extended'.default.SHOW_DAMAGE && ObjectType == eFOT_Unit)
 	{
 		EntryDef = EmptyDef;
 		EntryDef.BlockName = 'Damage';
 		EntryDef.Type = eSRET_Damage;
+		EntryDef.Stat = eStat_Invalid;
 		EntryDef.IconPath = class'WOTCLootIndicator_Extended'.default.SHOW_DMG_ICONPATH; //"UILibrary_UIFlagExtended.UIFlag_Damage";
 		EntryDef.HexColour = class'WOTCLootIndicator_Extended'.default.TEXT_COLOUR_BYTEAM ? HUDIconColour : class'WOTCLootIndicator_Extended'.default.SHOW_DMG_COLOURHEX;
 		EntryDef.bCanObsfucate = class'WOTCLootIndicator_Extended'.default.SHOW_DMG_OBFUSCATE;
@@ -733,6 +736,9 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 			continue;
 		}
 
+		// Needs to happen before obfuscate etc to set the correct background icon + colour
+		UpdateStatEntryIconColour(Entry);
+
 		// No per-stat value handling if obfuscated, sets as "##" or damage as "#-#"
 		if (TryObsfucate(Entry, NewUnitState)) { continue; }
 
@@ -743,13 +749,28 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 			// allow mods to change/add the shown value for a stats config entry
 			NSLWTuple = new class'LWTuple';
 			NSLWTuple.Id = 'UIUnitFlag_AddDisplayInfo';
-			NSLWTuple.Data.Add(1);
-			NSLWTuple.Data[0].kind = LWTVString;	// What the info should be
-			NSLWTuple.Data[0].s = "";
+			NSLWTuple.Data.Add(3);
+			NSLWTuple.Data[0].kind = LWTVObject;	// Sending the UnitFlag
+			NSLWTuple.Data[0].o = self;
+			NSLWTuple.Data[1].kind = LWTVString;	// What the info should be
+			NSLWTuple.Data[1].s = "";
+			NSLWTuple.Data[2].kind = LWTVBool;		// Should this trigger once
+			NSLWTuple.Data[2].b = false;
 			//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+			//SEND THE EVENT FOR LISTENERS
 			`XEVENTMGR.TriggerEvent(Entry.Definition.SpecialTriggerID, NSLWTuple, NewUnitState );
-			Entry.SetValue(NSLWTuple.Data[0].s);
+
+			//SET THE VALUE BASED ON LISTENER
+			Entry.SetValue(NSLWTuple.Data[1].s);
+
+			//IF TRIGGER ONCE CLEAR THE TRIGGER ID, USEFUL IF GETTING THE DATA IS INTENSIVE AND UNLIKELY TO CHANGE
+			if (NSLWTuple.Data[2].b)
+			{
+				Entry.ClearSpecialTrigger();
+			}
+
+			//THIS STAT IS DEALT WITH CONTINUE TO THE NEXT ONE
 			continue;
 		}
 
@@ -759,6 +780,9 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 
 		switch (Entry.Definition.Stat)
 		{
+			// This was a triggered response which was set to once only, we do not want to update the previously set value
+			case eStat_Invalid: break;
+
 			// Prevent the warning from the default block, as HP is handled elsewhere
 			case eStat_HP: break;
 
@@ -767,15 +791,26 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 			case eStat_Defense:
 			case eStat_Dodge:
 			case eStat_Hacking:
+			case eStat_HackDefense:
 			case eStat_PsiOffense:
 			case eStat_ShieldHP:
-			case eStat_ArmorChance:
+			case eStat_ArmorChance: 		//DEPRECIATED?
 			case eStat_ArmorPiercing:
 			case eStat_CritChance:
 			case eStat_FlankingCritChance:
 			case eStat_FlankingAimBonus:
 			case eStat_DetectionRadius:
+			case eStat_DetectionModifier:
+			case eStat_UtilityItems:
+			case eStat_BackpackSize: 		//DEPRECIATED?
+			case eStat_FlightFuel: 			//DEPRECIATED?
+			case eStat_AlertLevel:
+			case eStat_Strength:
+			case eStat_SeeMovement: 		//DEPRECIATED?
 			case eStat_SightRadius:
+			case eStat_HearingRadius: 		//DEPRECIATED?
+			case eStat_CombatSims:
+			case eStat_Job:
 				Entry.SetValue(iCurrentValue);
 			break;
 
@@ -831,16 +866,16 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 						@"\n Type	:" $Entry.Definition.Type
 						@"\n Stat	:" $Entry.Definition.Stat
 						@"\n Icon	:" $Entry.Definition.IconPath
+						@"\n IcCol	:" $Entry.Definition.IconColour
 						@"\n Hex	:" $Entry.Definition.HexColour
 						@"\n Obs	:" $Entry.Definition.bCanObsfucate
 						@"\n ID		:" $Entry.Definition.SpecialTriggerID
 					, class'WOTCLootIndicator_Extended'.default.bRustyUIFlagLog,'WOTC_RUSTY_UIFLAG');
 		}
-
-		UpdateStatEntryIconColour(Entry);
 	}
 }
 
+// DEPRICIATED
 simulated protected function UpdateUnitDamageStat (XComGameState_Unit NewUnitState)
 {
 	local UIUnitFlagExtended_StatEntry Entry;
@@ -857,6 +892,9 @@ simulated protected function UpdateUnitDamageStat (XComGameState_Unit NewUnitSta
 			continue;
 		}
 
+		// Needs to happen before obfuscate etc to set the correct background icon + colour
+		UpdateStatEntryIconColour(Entry);
+
 		if (!TryObsfucate(Entry, NewUnitState))
 		{
 			if (DamageString.HasChanged())
@@ -864,8 +902,6 @@ simulated protected function UpdateUnitDamageStat (XComGameState_Unit NewUnitSta
 				Entry.SetValue(DamageString.GetValue());
 			}
 		}
-
-		UpdateStatEntryIconColour(Entry);
 	}
 }
 
@@ -887,6 +923,9 @@ simulated protected function SetHealthStatEntry (int _currentHP, int _maxHP)
 			continue;
 		}
 
+		// Needs to happen before obfuscate etc to set the correct background icon + colour
+		UpdateStatEntryIconColour(Entry);
+
 		if (!TryObsfucate(Entry))
 		{
 			strValue = string(_currentHP);
@@ -898,8 +937,6 @@ simulated protected function SetHealthStatEntry (int _currentHP, int _maxHP)
 
 			Entry.SetValue(strValue);
 		}
-
-		UpdateStatEntryIconColour(Entry);
 	}
 }
 
@@ -957,9 +994,9 @@ simulated protected function bool TryObsfucate (UIUnitFlagExtended_StatEntry Ent
 
 	//`LOG("IS UNIT FLAG OBFUSCATED ::[" @bObfuscate @"] For Unit:[" @NewUnitState.GetFullName() @"]", class'WOTCLootIndicator_Extended'.default.bRustyUIFlagLog,'WOTC_RUSTY_UIFLAG');
 
-	if (Entry.Definition.Type == eSRET_Damage)
+	if (Entry.Definition.Type == eSRET_Damage || Entry.Definition.Stat == eStat_Invalid)
 	{
-		Entry.SetValue("#-#");
+		Entry.SetValue("#?#");
 	}
 	else
 	{
@@ -1525,18 +1562,40 @@ simulated function FindHUDIconDetails(out string strIcon, out string HexColour)
 	local X2VisualizerInterface Visualizer;
 	local eUIState iColourState;
 
-	UnitState = XComGameState_Unit(History.GetGameStateForObjectID(StoredObjectID));
-	Visualizer = X2VisualizerInterface(UnitState.GetVisualizer());
+	if (ObjectType == eFOT_Unit)
+	{
+		UnitState = XComGameState_Unit(History.GetGameStateForObjectID(StoredObjectID));
 
-	strIcon = Visualizer.GetMyHUDIcon();
-	iColourState = Visualizer.GetMyHUDIconColor();
+		if (UnitState != none)
+		{
+			Visualizer = X2VisualizerInterface(UnitState.GetVisualizer());
+		}
+	}
+	else if (ObjectType == eFOT_Destructible)
+	{
+		Visualizer = X2VisualizerInterface(History.GetVisualizer(StoredObjectID));
+	}
+	else
+	{
+		//ObjectType == eFOT_DestructibleNoFlag || eFOT_Invalid;
+		//no point in finding out the HUD details
+		return;
+	}
+
+	if (Visualizer != none)
+	{
+		strIcon = Visualizer.GetMyHUDIcon();
+		iColourState = Visualizer.GetMyHUDIconColor();
+	}
 
 	//cut the 0x from the gethexcolourfromstate return
 	HexColour = class'UIUtilities_Colors'.static.GetHexColorFromState(iColourState);
 	HexColour = Right(HexColour, Len(HexColour) -2);
+
 }
 
 //ensures we do this once on initial init
+//this is because all these checks are pretty intensive, especially if we have to go through the perks
 function UpdateDamageString(XComGameState_Unit UnitState)
 {
 	DamageString.SetValue(GetDamageString(UnitState));

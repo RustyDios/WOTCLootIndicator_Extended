@@ -2,7 +2,7 @@
 //  FILE:   UIUnitFlagExtended_StatEntry  by Xymanek && RustyDios
 //  
 //	File created	13/07/22	17:00
-//	LAST UPDATED	28/03/23	02:30
+//	LAST UPDATED	28/03/23	18:30
 //
 //=================================================================
 
@@ -43,6 +43,8 @@ simulated function InitStatEntry (StatRowEntryDefinition InDefinition)
 	Text.TextSizeRealized = true; // By default there is no text, so we don't know the width
 	Text.OnTextSizeRealized = OnTextSizeRealized;
 	Text.SetX(Icon.Width);
+	Text.Hide();
+
 }
 
 simulated protected function OnTextSizeRealized ()
@@ -50,6 +52,7 @@ simulated protected function OnTextSizeRealized ()
 	Width = Text.X + Text.Width;
 
 	if (OnSizeRealized != none) OnSizeRealized();
+	Text.Show();
 }
 
 simulated function SetIconColour(string IconColour)
@@ -68,14 +71,19 @@ simulated function SetValue (coerce string strValueUnformatted)
 	local string strValue;
 
 	strValue = strValueUnformatted;
-	strValue = class'UnitFlagExtendedHelpers'.static.ColourText(strValue, Definition.HexColour);
 	strValue = class'UIUtilities_Text'.static.AddFontInfo(strValue, false, false, false, class'WOTCLootIndicator_Extended'.default.INFO_FONT_SIZE);
+	strValue = class'UnitFlagExtendedHelpers'.static.ColourText(strValue, Definition.HexColour);
 
 	Text.SetHtmlText(strValue);
-
 	class'UnitFlagExtendedHelpers'.static.AddShadowToTextField(Text);
 
 	Show(); // We have a value
+}
+
+simulated function ClearSpecialTrigger()
+{
+	Definition.SpecialTriggerID = '';
+	Definition.Stat = eStat_Invalid;
 }
 
 defaultproperties
