@@ -996,7 +996,7 @@ simulated protected function bool TryObsfucate (UIUnitFlagExtended_StatEntry Ent
 
 	if (Entry.Definition.Type == eSRET_Damage || Entry.Definition.Stat == eStat_Invalid)
 	{
-		Entry.SetValue("#?#");
+		Entry.SetValue("#-#");
 	}
 	else
 	{
