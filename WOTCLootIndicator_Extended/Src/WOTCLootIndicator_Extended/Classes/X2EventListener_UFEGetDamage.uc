@@ -38,21 +38,19 @@ static function CHEventListenerTemplate CreateListenerTemplate_UFEGetDamage()
 //FOR REF/INFO ONLY called in UIUnitFlagExtended 
 {
 	//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 	// allow mods to change/add the shown value for a stats config entry
 	NSLWTuple = new class'LWTuple';
 	NSLWTuple.Id = 'UIUnitFlag_AddDisplayInfo';
 	NSLWTuple.Data.Add(3);
-	NSLWTuple.Data[0].kind = LWTVObject;	// Sending the UnitFlag
-	NSLWTuple.Data[0].o = self;
-	NSLWTuple.Data[1].kind = LWTVString;	// What the info should be
-	NSLWTuple.Data[1].s = "";
-	NSLWTuple.Data[2].kind = LWTVBool;		// Should this trigger once
-	NSLWTuple.Data[2].b = false;
+	NSLWTuple.Data[0].kind = LWTVObject;	NSLWTuple.Data[0].o = self;		// Sending the UnitFlag
+	NSLWTuple.Data[1].kind = LWTVString;	NSLWTuple.Data[1].s = "";		// What the info should be
+	NSLWTuple.Data[2].kind = LWTVBool;		NSLWTuple.Data[2].b = false;	// Should this trigger once
+	
 	//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	//the event name is from the config file
 	`XEVENTMGR.TriggerEvent(Entry.Definition.SpecialTriggerID, NSLWTuple, NewUnitState );
-
 }
 */
 
@@ -60,8 +58,6 @@ static function EventListenerReturn OnUFEGetDamage(Object EventData, Object Even
 {
     local LWTuple				Tuple;
     local XComGameState_Unit    UnitState;
-
-	//unless you need something specific from the extended flag this can also be UIUnitFlag to avoid needing to build against this mod or skipped
 	local UIUnitFlagExtended	UnitFlag;
 
     Tuple = LWTuple(EventData);
@@ -73,7 +69,8 @@ static function EventListenerReturn OnUFEGetDamage(Object EventData, Object Even
 		return ELR_NoInterrupt;
 	}
 
-	//unless you need something specific from the extended flag this can also be UIUnitFlag to avoid needing to build against this mod or skipped
+	//this cast can also be UIUnitFlag to avoid needing to build against this mod or commented out
+	//unless you need something specific from the extended flag, like I need to do so here
 	UnitFlag = UIUnitFlagExtended(Tuple.Data[0].o);
 	if (UnitFlag == none)
 	{
@@ -87,7 +84,7 @@ static function EventListenerReturn OnUFEGetDamage(Object EventData, Object Even
 	return ELR_NoInterrupt;
 }
 
-static function string GetDamageString(UIUnitFlagExtended UnitFlag, XComGameState_Unit UnitState, optional bool bForceSecondary)
+static function string GetDamageString(UIUnitFlagExtended UnitFlag, XComGameState_Unit UnitState, optional bool bForcedToUseSecondary)
 {
 	local XComGameStateHistory 		History;
 	local StateObjectReference 		ObjectRef;
@@ -100,31 +97,31 @@ static function string GetDamageString(UIUnitFlagExtended UnitFlag, XComGameStat
 	local X2Effect					TargetEffect;
 	local int minDamage, maxDamage;
 
-    AbilityManager = class'X2AbilityTemplateManager'.static.GetAbilityTemplateManager();
 	History = `XCOMHISTORY;
+    AbilityManager = class'X2AbilityTemplateManager'.static.GetAbilityTemplateManager();
 
 	WeaponState = UnitState.GetPrimaryWeapon();
 
 	//if primary is a bust attempt to get secondary - should fix 'secondary only ' users
-	if (WeaponState == none || bForceSecondary)
+	if (WeaponState == none || bForcedToUseSecondary)
 	{
 		WeaponState = UnitState.GetSecondaryWeapon();
-		bForceSecondary = true;
+		bForcedToUseSecondary = true;
 	}
 
-	//if weapon is still bust, bail to perks
+	//if weapon is still bust, bail to perks, if not find damage ranges
 	if (WeaponState != none)
 	{
 		WeaponTemplate = X2WeaponTemplate (WeaponState.GetMyTemplate()) ;
 
+		//calculate min and max damage value from WeaponDamageValues
 		minDamage = WeaponTemplate.BaseDamage.Damage - WeaponTemplate.BaseDamage.Spread;
 		maxDamage = WeaponTemplate.BaseDamage.Damage + WeaponTemplate.BaseDamage.Spread;
 
 		if ( WeaponTemplate.BaseDamage.PlusOne > 0 ) { maxDamage++; }
 
-		//=================================================================//
-		// ===== ACCOUNT FOR BREAKTHROUGH DAMAGES TO THE BASE WEAPON ===== //
-		//=================================================================//
+		// ===== ACCOUNT FOR BREAKTHROUGH DAMAGES TO THE BASE WEAPON, ONLY EVER APPLIES TO PRIMARY WEAPONS !! ===== //
+		// WE ONLY DO THIS CHECK ONCE FOR CASES WHERE THE DAMAGE STRING IS FORCED TO UPDATE, CUTS OUT A HUGE LAG HANG
 		if (!UnitFlag.m_BreakthroughBonusesFound)
 		{
 			//get breakthough from HQ
@@ -149,7 +146,7 @@ static function string GetDamageString(UIUnitFlagExtended UnitFlag, XComGameStat
 					}
 				}
 			}
-		
+			
 			UnitFlag.m_BreakthroughBonusesFound = true;
 		}
 
@@ -169,9 +166,9 @@ static function string GetDamageString(UIUnitFlagExtended UnitFlag, XComGameStat
 		//damage output is 'none', force try secondary .. if none and secondary still has none, try perks
 		if( (maxDamage - minDamage < 0 || maxDamage <= 0))
 		{
-			if (bForceSecondary)
+			if (bForcedToUseSecondary)
 			{
-				return GetDamageString_FromPerks(UnitState); //"---";
+				return GetDamageString_FromPerks(UnitState); //"-!-";
 			}
 
 			return GetDamageString(UnitFlag, UnitState, true);
@@ -193,6 +190,7 @@ static function string GetDamageString(UIUnitFlagExtended UnitFlag, XComGameStat
 
 //this is potentially very intensive as it looks at ALL the units perks and gets absolute minimum to maximum damage output across all perks
 //thus this is only used on units that have no damage display after a primary and secondary weapon check is done
+//which should minimise when this happens, except for fuxxing chryssalid swarms .. and the lost ..
 static function string GetDamageString_FromPerks(XComGameState_Unit UnitState)
 {
 	local XComGameStateHistory History;
@@ -204,15 +202,15 @@ static function string GetDamageString_FromPerks(XComGameState_Unit UnitState)
 	local WeaponDamageValue MinDamagePreview, MaxDamagePreview;
 	local int AllowsShield, minDamage, maxDamage, minDamageC, maxDamageC;
 
-	arrData = UnitState.Abilities;
 	History = `XCOMHISTORY;
+	arrData = UnitState.Abilities;
 
 	foreach arrData(Data)
 	{
 		AbilityState = XComGameState_Ability(History.GetGameStateForObjectID(Data.ObjectID));
 
 		//MinDamagePreview, MaxDamagePreview, AllowsShield ? are out values
-		//Feeding ourself gets us output damage as ourselves as primary target
+		//Feeding ourself gets us output damage as ourselves as primary target, not perfect but a neccessary evil ..
 		//Feeding a null Target gets us Mutli-target attacks -- NOT REQUIRED ? IT WAS ALWAYS REPORTING the same as this --
 		AbilityState.GetDamagePreview(UnitState.GetReference(), MinDamagePreview, MaxDamagePreview, AllowsShield);
 
@@ -233,7 +231,7 @@ static function string GetDamageString_FromPerks(XComGameState_Unit UnitState)
 	//damage output is STILL 'none', subtly report as an 'error'
 	if( (maxDamage - minDamage < 0 || maxDamage <= 0))
 	{
-		return "---";
+		return "-!-";
 	}
 
 	//damages are the same, use max

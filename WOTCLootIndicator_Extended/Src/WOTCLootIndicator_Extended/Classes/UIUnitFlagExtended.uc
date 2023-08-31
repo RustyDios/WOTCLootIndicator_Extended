@@ -2,10 +2,10 @@
 //  FILE:   UIUnitFlagExtended  by Xymanek && RustyDios
 //  
 //	File created	13/07/22	17:00
-//	LAST UPDATED	28/03/23	19:00
+//	LAST UPDATED	30/08/23	03:30
 //
 //	<> TODO : Rework && Update Y Shift value correctly
-//	<> TODO : Multiple Stat lines if the Stats Block excedes HealthBar length
+//	<> TODO : Automate - Multiple Stat lines if the Stats Block excedes HealthBar length
 //
 //=============================================================
 
@@ -14,6 +14,9 @@ class UIUnitFlagExtended extends UIUnitFlag dependson(UnitFlagExtendedHelpers);
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //	GAME STATE CACHING
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var int LastHistoryIndex;
+var bool bIsFullyInited;
 
 enum EFlagObjectType
 {
@@ -32,6 +35,7 @@ var int m_BreakthroughBonuses;
 var bool m_BreakthroughBonusesFound;
 
 var CachedString HealthBarColour, ShieldBarColour, DamageString;
+var CachedString HealthBarColourPreMC, ShieldBarColourPreMC;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //	NEW UI ELEMENTS
@@ -49,6 +53,7 @@ var array<UIIcon> StatusIcons;
 var protected bool bLayoutRealizePending, bLootIndicatorScanned, bHealthBarCreated, bCheckAndSetHealthBarColour, bShieldBarCreated, bCheckAndSetShieldBarColour;
 
 var string HUDIconString, HUDIconColour;
+var bool bGotFrostShields, bFrostShieldsChecked;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //	INIT
@@ -57,15 +62,19 @@ var string HUDIconString, HUDIconColour;
 simulated function InitFlag (StateObjectReference ObjectRef)
 {
 	local XComDestructibleActor DestructibleActor;
+	local XComGameState_Unit UnitState;
+	local Object ThisObj;
 
 	super.InitFlag(ObjectRef);
 
-	HealthBarColour = new class'CachedString';
-	ShieldBarColour = new class'CachedString';
+	HealthBarColour = new class'CachedString';	HealthBarColourPreMC = new class'CachedString';
+	ShieldBarColour = new class'CachedString';	ShieldBarColourPreMC = new class'CachedString';
 	DamageString	= new class'CachedString';
 
 	// Determine what we are representing
 	DestructibleActor = XComDestructibleActor(History.GetVisualizer(StoredObjectID));
+	UnitState = XComGameState_Unit(History.GetGameStateForObjectID(StoredObjectID));
+
 	if (DestructibleActor != none)
 	{
 		if (XComGameState_Destructible(History.GetGameStateForObjectID(StoredObjectID)) != none
@@ -80,15 +89,23 @@ simulated function InitFlag (StateObjectReference ObjectRef)
 			ObjectType = eFOT_Destructible;
 		}
 	}
-	else if (XComGameState_Unit(History.GetGameStateForObjectID(StoredObjectID)) != none)
+	else if ( UnitState != none)
 	{
 		ObjectType = eFOT_Unit;
+		
+		//if we are a unit register for mind control/team swapping so we can update health/shield bar colours correctly
+		//make sure we filter this this to 'our' unit by callback object, else it'll trigger for all flags everywhere
+		ThisObj = self;
+		`XEVENTMGR.RegisterForEvent(ThisObj, 'UnitChangedTeam', UnitChangedTeam_Listener, ELD_OnStateSubmitted, , UnitState);
 	}
 
 	//doing this once here instead of multiple times throughout the file
+	//also called in the UnitChangedTeam
+	//needs to be done after we determine what we are representing by ObjectType!
 	HUDIconString = ""; HUDIconColour = "";
 	FindHUDIconDetails(HUDIconString, HUDIconColour);
 
+	//Initial Build of new UI elements
 	BuildExtendedStatusRow();
 	BuildLootIndicator();
 	BuildNameRow();
@@ -114,9 +131,67 @@ simulated protected function DoInitialUpdate ()
 
 }
 
+simulated function Remove()
+{
+	local Object ThisObj;
+
+	//make sure we unregister from events if we registered, dang garbage collection issues ..
+	if (ObjectType == eFOT_Unit)
+	{
+		ThisObj = self;
+		`XEVENTMGR.UnRegisterFromEvent(ThisObj, 'UnitChangedTeam');
+	}
+
+	super.Remove();
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//	REFRESH/UPDATE 
+//	REFRESH/UPDATES
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//this ELR should be called when our stored unit changes teams, this updates our hud colours
+//triggered from XCGS_Unit SetControllingPlayer, after a team swap has actually happened
+function EventListenerReturn UnitChangedTeam_Listener(Object EventData, Object EventSource, XComGameState GameState, Name Event, Object CallbackData)
+{
+	local XComGameState_Unit NewUnitState;
+	local XComGameState NewGameState;
+
+	NewUnitState = XComGameState_Unit(EventData); //Data and Source are both the same
+
+	if (NewUnitState != none)
+	{
+		NewGameState = class'XComGameStateContext_ChangeContainer'.static.CreateChangeState("TeamChange UnitFlag Respond");
+		NewUnitState = XComGameState_Unit(NewGameState.ModifyStateObject(class'XComGameState_Unit', NewUnitState.ObjectID));
+
+		RespondToNewGameState(NewGameState, true);
+		`XCOMGAME.GameRuleset.SubmitGameState(NewGameState);
+
+		NewGameState = class'XComGameStateContext_ChangeContainer'.static.CreateChangeState("TeamChange UnitFlag Colours");
+		NewUnitState = XComGameState_Unit(NewGameState.ModifyStateObject(class'XComGameState_Unit', NewUnitState.ObjectID));
+
+		//YES! THIS LOGIC SEEMS BACKWARDS, BUT IT IS CORRECT! IS MC = NOT ON ORIGINAL TEAMS
+		if(NewUnitState.IsMindControlled())
+		{
+			HealthBarColourPreMC.SetValue(HealthBarColour.GetValue());
+			ShieldBarColourPreMC.setValue(ShieldBarColour.GetValue());
+		}
+		else
+		{
+			//ForceBarColours(HealthBarColourPreMC.GetValue(), ShieldBarColourPreMC.GetValue() );
+
+			//FORCE THE COLOURS TO CHANGE AND RESET ...
+			HealthBarColour.SetValue("696969");	HealthBarColour.SetValue(HealthBarColourPreMC.GetValue());
+			ShieldBarColour.setValue("696969");	ShieldBarColour.setValue(ShieldBarColourPreMC.GetValue());
+
+			UpdateBarColours_Health(NewUnitState);
+			UpdateBarColours_Shield(NewUnitState);
+		}
+
+		`XCOMGAME.GameRuleset.SubmitGameState(NewGameState);
+	}
+
+	return ELR_NoInterrupt;
+}
 
 // This function might get called before object is ready to rock and roll. has a !bIsInited return
 simulated function SetSelected(bool isSelected)
@@ -132,10 +207,36 @@ simulated function SetSelected(bool isSelected)
 //do not allow calls too early, because unit flag uses direct invoke which results in bad calls pre-init 
 simulated function RespondToNewGameState(XComGameState NewState, bool bForceUpdate = false)
 {
+	local XComGameState_BaseObject ObjectState;
+	local int HistoryIndex;
+
 	// Expanded version of the same check as in super
 	if (!IsFullyInited()) return;
 
-	super.RespondToNewGameState(NewState,bForceUpdate);
+	//NOT calling super so we can optimise behind LastHistoryIndex
+	//super.RespondToNewGameState(NewState,bForceUpdate);
+
+	if (bForceUpdate || bIsVisible)
+	{
+		//ENSURE WE HAVE AN OBJECT STATE
+		if( NewState != None ) 	{ ObjectState = NewState.GetGameStateForObjectID(StoredObjectID); 	}
+		else					{ ObjectState = History.GetGameStateForObjectID(StoredObjectID);	}
+
+		//WE HAVE AN OBJECT (UNIT/DESTRUCTABLE) AND ITS VISIBLE/FORCED UPDATE
+		if( ObjectState != None )
+		{
+			//ENSURE WE GET THE HISTORY INDEX FROM THE OBJECT
+			HistoryIndex = ObjectState.GetParentGameState().HistoryIndex;
+
+			//UPDATE ONLY IF NEW
+			if (LastHistoryIndex < HistoryIndex)
+			{
+				LastHistoryIndex = HistoryIndex;
+				VisualizedHistoryIndex = HistoryIndex;
+				UpdateFromState(ObjectState, , bForceUpdate);
+			}
+		}
+	}
 }
 
 //  Called from the UIUnitFlagManager's OnTick
@@ -177,7 +278,7 @@ simulated function UpdateFromUnitState (XComGameState_Unit NewUnitState, bool bI
 	UpdateLootIndicator(NewUnitState);
 	UpdateNameRow(NewUnitState);
 
-	//UpdateUnitDamageStat(NewUnitState);	//DEPRICIATED
+	//UpdateUnitDamageStat(NewUnitState);	//DEPRECIATED
 	UpdateUnitStats(NewUnitState);
 
 	UpdateBarColours_Health(NewUnitState);
@@ -286,12 +387,12 @@ simulated function SetShieldPoints( int _currentShields, int _maxShields )
 		Invoke("SetShieldPoints", myArray);
 	}
 
-	// Disable hitpoints preview visualization - sbatista 6/24/2013 [? more like set to merge HP/ShieldHP preview displays - RustyDios]
+	// Disable hitpoints preview visualization - sbatista 6/24/2013 [? more like set to merge HP/ShieldHP preview displays ~ RustyDios]
 	// <> TODO : Investigate if this is needed if ShieldHp <=0 
 	SetShieldPointsPreview();
 }
 
-//Technically NO CHANGE here now as Armor Text+Icon is a STAT BLOCK thing, Armour Pips are always shown ...
+//Technically NO CHANGE here now as Armor Text+Icon is a STAT BLOCK thing, Armour Pips being shown is now optional ...
 //ArmorPips get fed in NewUnitState.GetArmorMitigationForUnitFlag() which is stat + effects
 simulated function SetArmorPoints(optional int _iArmor = 0)
 {
@@ -350,7 +451,7 @@ simulated protected function BuildLootIndicator()
 
 	LootIcon.SetX(class'WOTCLootIndicator_Extended'.default.LOOT_OFFSET_X);
 	LootIcon.SetY(class'WOTCLootIndicator_Extended'.default.LOOT_OFFSET_Y + GetYShift());
-	LootIcon.Hide();
+	LootIcon.Hide(); //ALWAYS INITIALLY HIDE, SHOWN IF NEEDED
 }
 
 simulated protected function bool ShouldShowLootIndicator (XComGameState_Unit NewUnitState)
@@ -446,7 +547,6 @@ simulated protected function UpdateNameRow (XComGameState_Unit NewUnitState)
 	if (   ( m_bIsFriendly.GetValue() && class'WOTCLootIndicator_Extended'.default.SHOW_FRIENDS_NAME )
 		|| (!m_bIsFriendly.GetValue() && class'WOTCLootIndicator_Extended'.default.SHOW_ENEMIES_NAME ) )
 	{
-	
 		//get the displayed name , set its size , then its colour
 		strUnitName = GetUnitDisplayedName(NewUnitState);
 		strUnitName = class'UIUtilities_Text'.static.AddFontInfo(strUnitName, false, false, false, class'WOTCLootIndicator_Extended'.default.NAME_FONT_SIZE);
@@ -509,63 +609,44 @@ function InitStatusIcon(UIIcon StatusIcon, name InitName, string ImagePath)
 //This function will be spammed, so please only send changes to flash.
 simulated function RealizeClaymore(optional XComGameState_Unit NewUnitState = none)
 {
-	local bool IsEffected;
-
 	//bailout if using new status row
 	if (!class'WOTCLootIndicator_Extended'.default.bDISABLE_NEW_STATUS_ROW) { return; }
 
-	if( NewUnitState == none )
-	{
-		NewUnitState = XComGameState_Unit(History.GetGameStateForObjectID(StoredObjectID));
-	}
-
-	if( NewUnitState != none )
-	{
-		IsEffected = NewUnitState.AffectedByEffectNames.Find(class'X2Effect_HomingMine'.default.EffectName) > -1;
-		if( IsEffected != m_bShowingClaymore )
-		{
-			AS_SetClaymore(IsEffected);
-			m_bShowingClaymore = IsEffected;
-		}
-	}
+	//if not call super to use vanilla code
+	super.RealizeClaymore(NewUnitState);
 }
 
 //cancel base game rupture if we add it to the status row now
 //This function will be spammed, so please only send changes to flash.
 simulated function RealizeRupture(XComGameState_Unit NewUnitState)
 {
-	local ASValue myValue;
-	local Array<ASValue> myArray;
-
 	//bailout if using new status row
 	if (!class'WOTCLootIndicator_Extended'.default.bDISABLE_NEW_STATUS_ROW) { return; }
 
-	myValue.Type = AS_Boolean;
-	myValue.b = NewUnitState.GetRupturedValue() > 0;
-	myArray.AddItem(myValue);
-
-	Invoke("SetShred", myArray);	//  <> TODO : - UI - rename this ? --- not a RustyNote, this is the flash function call
+	//if not call super to use vanilla code
+	super.RealizeRupture(NewUnitState);
 }
 
 simulated function RealizeStatus(optional XComGameState_Unit NewUnitState = none)
 {
-	local array<string> Icons;
+	local array<string> IconPaths;
 	local int i, StatusIconX, StatusIconY;
 
+	//GET UNIT STATE IF WE DIDN'T PASS ONE IN
 	if( NewUnitState == none ) { NewUnitState = XComGameState_Unit(History.GetGameStateForObjectID(StoredObjectID)); }
 
 	//NOTE: The UI currently only supports one status icon, and this is intentional from design. 
 	// I suspect we may need to stack them or show more in the future, so I'm handling everything in an array.
 	// Will update the flag to handle multiple icons if we need to. -bsteiner 26/02/2015
 
-	//Updated to handle multiple icons thanks to bsteiner handling it as an array way back then - RustyDios 16/08/2022
+	//Updated to handle multiple icons thanks to bsteiner handling it as an array way back then ~ RustyDios 16/08/2022
 
 	//get mod extended status icon paths
-	Icons.length = 0;
-	Icons = class'UnitFlagExtendedHelpers'.static.GetCurrentStatusIconPaths(NewUnitState, IsUnitBound(NewUnitState) );
+	IconPaths.length = 0;
+	IconPaths = class'UnitFlagExtendedHelpers'.static.GetCurrentStatusIconPaths(NewUnitState, IsUnitBound(NewUnitState) );
 
-	//set or hide our new status icons panel
-	if( Icons.length <= 0 )
+	//set or hide our new status icons panel and original icon slot
+	if( IconPaths.length <= 0 )
 	{
 		AS_SetStatusIcon("");
 		ExtendedStatusRowContainer.Hide();
@@ -576,12 +657,13 @@ simulated function RealizeStatus(optional XComGameState_Unit NewUnitState = none
 		//use vanilla base game single icon only behaviour
 		if (class'WOTCLootIndicator_Extended'.default.bDISABLE_NEW_STATUS_ROW)
 		{
-			AS_SetStatusIcon(Icons[0]);
+			AS_SetStatusIcon(IconPaths[0]);
 			ExtendedStatusRowContainer.Hide();
 			return;
 		}
 
 		//use new behaviour and nullify base game icon setting
+		// <> TODO : LOCK BEHIND A VISUALISER/HISTORY  CHECK ?
 		AS_SetStatusIcon("");
 
 		//reset X position
@@ -590,16 +672,16 @@ simulated function RealizeStatus(optional XComGameState_Unit NewUnitState = none
 
 		//create or set new icons
 		//yes this happens on the realize as the icons need to refresh too
-		for (i = 0; i < Icons.length; i++)
+		for (i = 0; i < IconPaths.length; i++)
 		{
 			if (StatusIcons[i] == none)
 			{
 				StatusIcons.AddItem(Spawn(class'UIIcon', ExtendedStatusRowContainer));
-				InitStatusIcon(StatusIcons[i], name("StatusIcons_UFE_" $ i), Icons[i]);
+				InitStatusIcon(StatusIcons[i], name("StatusIcons_UFE_" $ i), IconPaths[i]);
 			}
 			else
 			{
-				StatusIcons[i].LoadIcon(Icons[i]);
+				StatusIcons[i].LoadIcon(IconPaths[i]);
 			}
 			
 			//space correctly and show
@@ -620,7 +702,7 @@ simulated function RealizeStatus(optional XComGameState_Unit NewUnitState = none
 		}
 
 		//remove any uneeded icons
-		for (i = StatusIcons.length -1 ; i >= Icons.length; i--)
+		for (i = StatusIcons.length -1 ; i >= IconPaths.length; i--)
 		{
 			if (StatusIcons[i] != none)
 			{
@@ -651,8 +733,8 @@ simulated protected function BuildStatsRow ()
 	local StatRowEntryDefinition EntryDef, EmptyDef;
 	local StatsBlock BlockDef;
 
-	//bail if not a unit or not a destructible needing a HP Only flag
-	if (ObjectType != eFOT_Unit && ObjectType != eFOT_Destructible) return;
+	//bail if not a unit and not a destructible needing a HP Only flag .. so Bail then if = eFOT_Invalid or eFOT_DestructibleNoFlag
+	if (ObjectType != eFOT_Unit && ObjectType != eFOT_Destructible) { return; }
 
 	//create a container for the stats icons and texts
 	StatRowContainer = Spawn(class'UIPanel', self);
@@ -663,7 +745,7 @@ simulated protected function BuildStatsRow ()
 	StatRowContainer.SetX(class'WOTCLootIndicator_Extended'.default.STAT_OFFSET_X);
 
 	//add the special section for damage preview - always first
-	//DEPRICIATED
+	//DEPRECIATED - SHOW DAMAGE SHOULD ALWAYS = FALSE
 	if (class'WOTCLootIndicator_Extended'.default.SHOW_DAMAGE && ObjectType == eFOT_Unit)
 	{
 		EntryDef = EmptyDef;
@@ -712,6 +794,16 @@ simulated protected function BuildStatsEntry (StatRowEntryDefinition EntryDef)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //	UPDATE/REFRESH STATS ROW
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+simulated function bool AreWeHiding()
+{
+	if (   ( m_bIsFriendly.GetValue() && !class'WOTCLootIndicator_Extended'.default.SHOW_STATS_ON_FRIENDS )
+		|| (!m_bIsFriendly.GetValue() && !class'WOTCLootIndicator_Extended'.default.SHOW_STATS_ON_ENEMIES ) )
+	{
+		return true;
+	}
+
+	return false;
+}
 
 simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 {
@@ -729,12 +821,7 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 		if (Entry.Definition.Stat == eStat_HP) { continue; }
 
 		// Are we hiding friendly stats OR hiding enemy stats ?
-		if (   ( m_bIsFriendly.GetValue() && !class'WOTCLootIndicator_Extended'.default.SHOW_STATS_ON_FRIENDS )
-			|| (!m_bIsFriendly.GetValue() && !class'WOTCLootIndicator_Extended'.default.SHOW_STATS_ON_ENEMIES ) )
-		{
-			Entry.Hide();
-			continue;
-		}
+		if (AreWeHiding()) { Entry.Hide();	continue; }
 
 		// Needs to happen before obfuscate etc to set the correct background icon + colour
 		UpdateStatEntryIconColour(Entry);
@@ -746,16 +833,15 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 		if (Entry.Definition.SpecialTriggerID != '' )
 		{
 			//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 			// allow mods to change/add the shown value for a stats config entry
 			NSLWTuple = new class'LWTuple';
 			NSLWTuple.Id = 'UIUnitFlag_AddDisplayInfo';
 			NSLWTuple.Data.Add(3);
-			NSLWTuple.Data[0].kind = LWTVObject;	// Sending the UnitFlag
-			NSLWTuple.Data[0].o = self;
-			NSLWTuple.Data[1].kind = LWTVString;	// What the info should be
-			NSLWTuple.Data[1].s = "";
-			NSLWTuple.Data[2].kind = LWTVBool;		// Should this trigger once
-			NSLWTuple.Data[2].b = false;
+			NSLWTuple.Data[0].kind = LWTVObject;	NSLWTuple.Data[0].o = self;		// Sending the UnitFlag
+			NSLWTuple.Data[1].kind = LWTVString;	NSLWTuple.Data[1].s = "";		// What the info should be
+			NSLWTuple.Data[2].kind = LWTVBool;		NSLWTuple.Data[2].b = false;	// Should this trigger once
+
 			//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 			//SEND THE EVENT FOR LISTENERS
@@ -875,7 +961,7 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 	}
 }
 
-// DEPRICIATED
+// DEPRECIATED - SHOW DAMAGE SHOULD ALWAYS BE FALSE - NOW PART OF NORMAL STATS BLOCK
 simulated protected function UpdateUnitDamageStat (XComGameState_Unit NewUnitState)
 {
 	local UIUnitFlagExtended_StatEntry Entry;
@@ -885,12 +971,7 @@ simulated protected function UpdateUnitDamageStat (XComGameState_Unit NewUnitSta
 		if (Entry.Definition.Type != eSRET_Damage) { continue; }
 
 		// Are we hiding friendly stats OR hiding enemy stats ?
-		if (   ( m_bIsFriendly.GetValue() && !class'WOTCLootIndicator_Extended'.default.SHOW_STATS_ON_FRIENDS )
-			|| (!m_bIsFriendly.GetValue() && !class'WOTCLootIndicator_Extended'.default.SHOW_STATS_ON_ENEMIES ) )
-		{
-			Entry.Hide();
-			continue;
-		}
+		if (AreWeHiding()) { Entry.Hide();	continue; }
 
 		// Needs to happen before obfuscate etc to set the correct background icon + colour
 		UpdateStatEntryIconColour(Entry);
@@ -916,12 +997,7 @@ simulated protected function SetHealthStatEntry (int _currentHP, int _maxHP)
 		if (Entry.Definition.Stat != eStat_HP) { continue; }
 
 		// Are we hiding friendly stats OR hiding enemy stats ?
-		if (   ( m_bIsFriendly.GetValue() && !class'WOTCLootIndicator_Extended'.default.SHOW_STATS_ON_FRIENDS )
-			|| (!m_bIsFriendly.GetValue() && !class'WOTCLootIndicator_Extended'.default.SHOW_STATS_ON_ENEMIES ) )
-		{
-			Entry.Hide();
-			continue;
-		}
+		if (AreWeHiding()) { Entry.Hide();	continue; }
 
 		// Needs to happen before obfuscate etc to set the correct background icon + colour
 		UpdateStatEntryIconColour(Entry);
@@ -971,11 +1047,9 @@ simulated protected function bool TryObsfucate (UIUnitFlagExtended_StatEntry Ent
 	// allow mods to change the show/hide behavior	
 	Tuple = new class'LWTuple';
 	Tuple.Id = 'UIUnitFlag_OverrideShowInfo';
-	Tuple.Data.Add(2);
-	Tuple.Data[0].kind = LWTVObject;
-	Tuple.Data[0].o = NewUnitState;		// The targeted unit. Not really required anymore, as event sends as SourceData! Needed to keep for backwards compatibility :(
-	Tuple.Data[1].kind = LWTVBool;
-	Tuple.Data[1].b = true;				// Whether the info should be available. true = show, false = hide
+	Tuple.Data.Add(2);														// Needed to keep [0] for backwards compatibility!
+	Tuple.Data[0].kind = LWTVObject;	Tuple.Data[0].o = NewUnitState;		// The targeted unit. Not really required anymore, as event sends as SourceData! 
+	Tuple.Data[1].kind = LWTVBool;		Tuple.Data[1].b = true;				// Whether the info should be available. true = show, false = hide
 
 	`XEVENTMGR.TriggerEvent('UIUnitFlag_OverrideShowInfo', Tuple, NewUnitState);
 
@@ -994,16 +1068,21 @@ simulated protected function bool TryObsfucate (UIUnitFlagExtended_StatEntry Ent
 
 	//`LOG("IS UNIT FLAG OBFUSCATED ::[" @bObfuscate @"] For Unit:[" @NewUnitState.GetFullName() @"]", class'WOTCLootIndicator_Extended'.default.bRustyUIFlagLog,'WOTC_RUSTY_UIFLAG');
 
-	if (Entry.Definition.Type == eSRET_Damage || Entry.Definition.Stat == eStat_Invalid)
-	{
-		Entry.SetValue("#-#");
-	}
-	else
-	{
-		Entry.SetValue("##");
-	}
+	//IF WE GOT THIS FAR THE ENTRY SHOULD BE OBFUSCATED, SET CORRECT OBFUSCATION STRING PER ENTRY TYPE
+	if (Entry.Definition.Type == eSRET_Damage) 			{ Entry.SetValue("#-#"); }
+	else if (Entry.Definition.Stat == eStat_Invalid) 	{ Entry.SetValue("-?-"); }
+	else												{ Entry.SetValue("##");  }
 
 	return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//	UPDATE/REFRESH BAR COLOURS -- FLASH CHECK
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+simulated function bool IsBarCreatedInFlash(string VarObjectPath)
+{
+	return Movie.GetVariableObject(MCPath $ VarObjectPath) != none;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1018,18 +1097,23 @@ simulated protected function string GetBarColours_Health (XComGameState_Unit New
 {
 	local SpecialBarColour SetSpecialBarColour;
 
-	//direct overrides per set template name
-	foreach class'WOTCLootIndicator_Extended'.default.SpecialBarColours_Health(SetSpecialBarColour)
+	//only set colours to special if unit is not mind controlled
+	if (!NewUnitState.IsMindControlled() )
 	{
-		if (NewUnitState.GetMyTemplateName() == SetSpecialBarColour.TemplateName)
+		//direct overrides per set template name
+		foreach class'WOTCLootIndicator_Extended'.default.SpecialBarColours_Health(SetSpecialBarColour)
 		{
-			return SetSpecialBarColour.HexColour;
+			if (NewUnitState.GetMyTemplateName() == SetSpecialBarColour.TemplateName)
+			{
+				return SetSpecialBarColour.HexColour;
+			}
 		}
+
+		if (NewUnitState.bIsSpecial) 	{ return "ACD373" ; }
+		if (NewUnitState.IsChosen())	{ return "B6B3E3" ; }
 	}
 
-	if (NewUnitState.bIsSpecial) 	{ return "ACD373" ; }
-	if (NewUnitState.IsChosen())	{ return "B6B3E3" ; }
-
+	//else and for all other cases set bar colour to HUD Icon Colour
 	return HUDIconColour;
 }
 
@@ -1038,6 +1122,7 @@ simulated protected function UpdateBarColours_Health (optional XComGameState_Uni
 	//only do the recolour of Health if it is a unit and set to do so by the config
 	if (ObjectType != eFOT_Unit || !class'WOTCLootIndicator_Extended'.default.HPBAR_COLOUR_BYTEAM )  { return; }
 
+	//get unit if it was not passed in, as we need one
 	if (NewUnitState == none)
 	{
 		NewUnitState = XComGameState_Unit(`XCOMHISTORY.GetGameStateForObjectID(StoredObjectID));
@@ -1054,11 +1139,6 @@ simulated protected function UpdateBarColours_Health (optional XComGameState_Uni
 	}
 }
 
-simulated function bool IsHealthBarCreatedInFlash()
-{
-	return Movie.GetVariableObject(MCPath $".healthMeter.theMeter") != none;
-}
-
 //called in the OnTick Update to change the bar colour, after it has been created and only if it needs changing
 simulated function TrySetHealthBarColour(optional bool bWasSpecial)
 {
@@ -1069,7 +1149,7 @@ simulated function TrySetHealthBarColour(optional bool bWasSpecial)
 
 	if (!bHealthBarCreated)
 	{
-		bHealthBarCreated = IsHealthBarCreatedInFlash();
+		bHealthBarCreated = IsBarCreatedInFlash(".healthMeter.theMeter");
 	}
 
 	if (bHealthBarCreated)
@@ -1104,25 +1184,40 @@ simulated protected function string GetBarColours_Shield (XComGameState_Unit New
 	local SpecialBarColour SetSpecialBarColour;
 
 	//Override frosty shields above all else
-	if ( class'WOTCLootIndicator_Extended'.default.SHIELDBAR_COLOUR_FROSTLEGION && NewUnitState.HasAbilityFromAnySource('MZ_FDIceShield') )
+	if ( class'WOTCLootIndicator_Extended'.default.SHIELDBAR_COLOUR_FROSTLEGION)
 	{
-		//set as 'frosty' shield colour for the Frost Legion Dudes
-		return class'WOTCLootIndicator_Extended'.default.SHIELDBAR_COLOURHEX_FROSTLEGION;
-	}
-
-	//direct overrides per set template name
-	foreach class'WOTCLootIndicator_Extended'.default.SpecialBarColours_Shield(SetSpecialBarColour)
-	{
-		if (NewUnitState.GetMyTemplateName() == SetSpecialBarColour.TemplateName)
+		//we only need to run the check once
+		if (!bFrostShieldsChecked)
 		{
-			return SetSpecialBarColour.HexColour;
+			bFrostShieldsChecked = true;
+			bGotFrostShields = NewUnitState.HasAbilityFromAnySource('MZ_FDIceShield'); // <> TODO : Make this a config lookup array?
+		}
+
+		if (bGotFrostShields)
+		{
+			//set as 'frosty' shield colour for the Frost Legion Dudes
+			return class'WOTCLootIndicator_Extended'.default.SHIELDBAR_COLOURHEX_FROSTLEGION;
 		}
 	}
 
-	//colours for special units
-	if (NewUnitState.bIsSpecial)	{ return "ACD373" ; }
-	if (NewUnitState.IsChosen())	{ return "B6B3E3" ; }
+	//only set colours to special if unit is not mind controlled
+	if (!NewUnitState.IsMindControlled() )
+	{
+		//direct overrides per set template name
+		foreach class'WOTCLootIndicator_Extended'.default.SpecialBarColours_Shield(SetSpecialBarColour)
+		{
+			if (NewUnitState.GetMyTemplateName() == SetSpecialBarColour.TemplateName)
+			{
+				return SetSpecialBarColour.HexColour;
+			}
+		}
 
+		//colours for special units
+		if (NewUnitState.bIsSpecial)	{ return "ACD373" ; }
+		if (NewUnitState.IsChosen())	{ return "B6B3E3" ; }
+	}
+
+	//else and for all other cases set bar colour to HUD Icon Colour
 	//check for if team colours on .. find and set team colour
 	if ( (class'WOTCLootIndicator_Extended'.default.SHIELDBAR_COLOUR_BYTEAM_ENEMIES && !m_bIsFriendly.GetValue() )
 	  || (class'WOTCLootIndicator_Extended'.default.SHIELDBAR_COLOUR_BYTEAM_FRIENDS && m_bIsFriendly.GetValue() ) )
@@ -1137,6 +1232,10 @@ simulated protected function string GetBarColours_Shield (XComGameState_Unit New
 //this had to be extended to check the shield bar has been created in flash before we try to recolour it
 simulated protected function UpdateBarColours_Shield (optional XComGameState_Unit NewUnitState)
 {
+	//only do the recolour of Shield if it is a unit (and set to do so by the config ... )
+	if (ObjectType != eFOT_Unit)  { return; }
+
+	//get unit if it was not passed in, as we need one
 	if (NewUnitState == none)
 	{
 		NewUnitState = XComGameState_Unit(`XCOMHISTORY.GetGameStateForObjectID(StoredObjectID));
@@ -1151,11 +1250,6 @@ simulated protected function UpdateBarColours_Shield (optional XComGameState_Uni
 	}
 }
 
-simulated function bool IsShieldBarCreatedInFlash()
-{
-	return Movie.GetVariableObject(MCPath $".healthMeter.shieldMeter") != none;
-}
-
 //called in the OnTick Update to change the bar colour, after it has been created and only if it needs changing
 simulated function TrySetShieldBarColour()
 {
@@ -1163,7 +1257,7 @@ simulated function TrySetShieldBarColour()
 
 	if (!bShieldBarCreated)
 	{
-		bShieldBarCreated = IsShieldBarCreatedInFlash();
+		bShieldBarCreated = IsBarCreatedInFlash(".healthMeter.shieldMeter.theMeter");
 	}
 
 	if (bShieldBarCreated)
@@ -1171,6 +1265,28 @@ simulated function TrySetShieldBarColour()
 		bCheckAndSetShieldBarColour = false;
 		AS_SetMCColor(MCPath $".healthMeter.shieldMeter.theMeter", ShieldBarColour.GetValue());
 	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//	UPDATE/REFRESH BAR COLOURS -- FORCED -- CURRENTLY NOT ACTUALLY USED
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+simulated function ForceBarColours(string HealthHex, string ShieldHex)
+{
+	local float fTotalHealthBars;
+	local int i;
+
+	AS_SetMCColor(MCPath $".healthMeter.theMeter", HealthHex);
+
+	fTotalHealthBars = Movie.GetVariableNumber(MCPath $ ".MeterTotal");
+	for (i = 0 ; i < fTotalHealthBars ; i++)
+	{
+		AS_SetMCColor(MCPath $".healthMeter.healthMeter" $ i $ ".theMeter", HealthHex);
+	}
+
+	AS_SetMCColor(MCPath $".healthMeter.shieldMeter.theMeter", ShieldHex);
+
+	MC.ProcessCommands(true);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1243,7 +1359,7 @@ simulated function SetWillPoints(int _currentWill, int _maxWill, int _previousWi
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
-// Start Issue #257 -- deprecated, 
+// Start Issue #257 -- depreciated by CHL, using new RealizeFocusMeter
 simulated function SetFocusPoints(int _currentFocus, int _maxFocus)
 {
 	RealizeFocusMeter(XComGameState_Unit(`XCOMHISTORY.GetGameStateForObjectID(StoredObjectID)));
@@ -1257,10 +1373,9 @@ simulated function RealizeFocusMeter(XComGameState_Unit UnitState)
 
 	//	Tuple info for reference
 	//
-	//		local XComGameState_Effect_TemplarFocus FocusState;
-	//		FocusState = UnitState.GetTemplarFocusEffectState();
-	//		Tuple.Data[0].b = FocusState != none;																							//Has Bar?
-	//
+	//	local XComGameState_Effect_TemplarFocus FocusState;
+	//	FocusState = UnitState.GetTemplarFocusEffectState();
+	//	Tuple.Data[0].b = FocusState != none;																								//Has Bar?
 	//	Tuple.Data[1].i = FocusState.FocusLevel;																							//Current Level
 	//	Tuple.Data[2].i = FocusState.GetMaxFocus(UnitState);																				//Maximum Level
 	//	Tuple.Data[3].s = "0x" $ class'UIUtilities_Colors'.const.PSIONIC_HTML_COLOR;														//Colour
@@ -1278,6 +1393,7 @@ simulated function RealizeFocusMeter(XComGameState_Unit UnitState)
 
 	Invoke("SetFocusPoints", myArray);
 
+	// >>> this little line from RoboJumper is what spurred me to do the other bar colour changes!
 	/* Re-Colour */		AS_SetMCColor(MCPath$".healthAnchor.focusMeter.theMeter", Tuple.Data[3].s);
 }
 // End Issue #257
@@ -1297,6 +1413,7 @@ simulated function RealizeFocusMeter(XComGameState_Unit UnitState)
 //	THIS FUNCTION OFFSETS THE ENTIRE FLAG POSITION FOR UNITS UNDER VIPER BIND
 //	I EXTENDED IT TO ACCOUNT FOR UNITS THAT HAVE BEEN BOUND BY THE VIPER KING AND HOISTED BY THE ARCHON KING TOO
 //	ALSO EXTENDED TO ELITE VIPERS, ABA VIPERS, FROST LEGION VIPERS/ADDERS ARMOURED, VALENTINES AND FLAME VIPERS
+//	AND THEN OUTSOURCED THE ENTIRE THING TO BE CONFIG EXPANDABLE :)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 simulated function bool IsUnitBound(XComGameState_Unit NewUnitState)
@@ -1307,7 +1424,7 @@ simulated function bool IsUnitBound(XComGameState_Unit NewUnitState)
 	{
 		if (NewUnitState.AffectedByEffectNames.Find(EffectName) != INDEX_NONE)
 		{
-			return true;
+			return true; //EARLY BREAKOUT IF WE FIND SOMETHING ...
 		}
 	}
 
@@ -1316,16 +1433,15 @@ simulated function bool IsUnitBound(XComGameState_Unit NewUnitState)
 
 simulated function RealizeViperBind(XComGameState_Unit NewUnitState)
 {
-
+	//NOT MUCH POINT IN CALLING SUPER TBH, JUST IN CASE CHL DOES AN UPDATE, AS WE OVERRIDE THE VALUE HERE ANYWAY!
 	super.RealizeViperBind(NewUnitState);
 
 	//const VIPER_BIND_OFFSET = 30; // 30 may have been fine for base game, but it's not for this with with all the extra stats and stuff
 	//The unit flag for the unit being bound will overlap with the Viper's unit flag without an offset.
 	//m_LocalYOffset = NewUnitState.IsUnitAffectedByEffectName(class'X2Ability_Viper'.default.BindSustainedEffectName) ? VIPER_BIND_OFFSET : 0;
 
-	// Shift the whole flag down if bound
+	// Shift the whole flag down if 'bound'
 	m_LocalYOffset = IsUnitBound(NewUnitState) ? class'WOTCLootIndicator_Extended'.default.BIND_SHIFT_Y : 0;
-
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1334,13 +1450,15 @@ simulated function RealizeViperBind(XComGameState_Unit NewUnitState)
 
 simulated function RealizeCover(optional XComGameState_Unit UnitState = none, optional int HistoryIndex = INDEX_NONE)
 {
+	//SUPER FIGURES OUT HIGH/LOW/FLANKED, ALSO UPDATES VISUALIZEDHISTORYINDEX !
 	super.RealizeCover(UnitState, HistoryIndex);
 	
+	//HAX: SEND DIRECT OVERRIDE TO FLASH TO SHOW/HIDE THE COVER SHIELD ICON, AFTER VANILLA CODE DECIDES WHAT IT WANTS TO DO WITH IT
 	MC.ChildSetBool ("coverStatusObj","_visible", class'WOTCLootIndicator_Extended'.default.SHOW_COVERSHIELD);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//	LAYOUT REFRESHING
+//	LAYOUT REFRESHING - THANKS XYMANEK!
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Called after all the values were set
@@ -1427,21 +1545,23 @@ simulated protected function DoRealizeExtendedLayout ()
 		OffsetY -= class'WOTCLootIndicator_Extended'.default.INFO_ICON_SIZE;
 	}
 
+	//SET HUDHEAD AND UNIT NAME ABOVE STATS ROWS
 	if (HudHeadIcon != none) HudHeadIcon.SetY(OffsetY);
 	if (UnitNameText != none) UnitNameText.SetY(OffsetY);
 }
 
-// TODO: Rework this
+// TODO: Rework this ~ XYMANEK
 function int GetYShift() 
 {
 	local XComGameState_Unit UnitState;
-	local int Shift;
 	local float fTotalHealthBars;
+	local int Shift;
 
+    local XComGameState_Effect_TemplarFocus FocusState;
 	local bool bUnitHasFocusBar;
 	local Object Tuple;
-    local XComGameState_Effect_TemplarFocus FocusState;
 
+	//GET OUR UNIT, WE NEED IT ...
 	UnitState = XComGameState_Unit(History.GetGameStateForObjectID(StoredObjectID));
 
 	//check for the presence of a focus bar, templar or CHL
@@ -1477,7 +1597,7 @@ function int GetYShift()
 		Shift += class'WOTCLootIndicator_Extended'.default.ALIENRULER_SHIFT_Y * int(fTotalHealthBars -1);
 	}
 
-	// BUMP UP IF THEY HAVE A WILL BAR OR IT IS A DESTRUCTIBLE OBJECT
+	// BUMP UP IF THEY HAVE A WILL BAR OR IT IS A DESTRUCTIBLE OBJECT (SAME VALUE NEEDED FOR BOTH ADJUSTMENTS)
 	if (m_bUsesWillSystem && class'WOTCLootIndicator_Extended'.default.SHOW_WILL_BAR || ObjectType == eFOT_Destructible )
 	{
 		Shift += class'WOTCLootIndicator_Extended'.default.WILLBAR_SHIFT_Y;
@@ -1513,17 +1633,20 @@ simulated protected function bool IsFullyInited ()
 {
 	local UIUnitFlagExtended_StatEntry Entry;
 
-	// Flag itself
-	if (!bIsInited) return false;
+	// UFE - IF WE KNOW WE'RE ALREADY DONE, DON'T CHECK EVERYTHING AGAIN
+	if (bIsFullyInited) { return true; }
+
+	// Vanilla Flag
+	if (!bIsInited) { return false; }
 
 	// Status Panel
-	if (!ExtendedStatusRowContainer.bIsInited) return false;
+	if (!ExtendedStatusRowContainer.bIsInited) { return false; }
 
-	// Stats text
-	foreach StatRowEntries(Entry)
-	{
-		if (!Entry.Text.bIsInited) return false;
-	}
+	// Stats texts
+	foreach StatRowEntries(Entry) { if (!Entry.Text.bIsInited) return false; }
+
+	//WE'RE DONE CHECKING - EVERYTHING WAS GOOD
+	bIsFullyInited = true;
 
 	return true;
 }
@@ -1531,10 +1654,10 @@ simulated protected function bool IsFullyInited ()
 //	Called when one of the panels that's checked in IsFullyInited (including self) is initialized
 simulated protected function OnComponentPanelInited (UIPanel Panel)
 {
-	// Delay the initial update until everything is ready so that we can safely read from scaleform
+	// Delay the initial update until everything is ready so that we can safely read from scaleform/flash
 	if (!IsFullyInited()) return;
 
-	DoInitialUpdate();
+	DoInitialUpdate(); // remember this, yeah it was over 1000 lines ago ... 
 }
 
 simulated protected function bool AnyStatEntriesPendingSizeRealized ()
@@ -1553,7 +1676,7 @@ simulated protected function bool AnyStatEntriesPendingSizeRealized ()
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//	DATA HOOKUP		<> TODO : REWORK THESE
+//	DATA HOOKUP		<> TODO : REWORK THESE ~ XYMANEK
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 simulated function FindHUDIconDetails(out string strIcon, out string HexColour)
@@ -1578,10 +1701,11 @@ simulated function FindHUDIconDetails(out string strIcon, out string HexColour)
 	else
 	{
 		//ObjectType == eFOT_DestructibleNoFlag || eFOT_Invalid;
-		//no point in finding out the HUD details
-		return;
+		//no point in finding out the HUD details as we have no flag anyway!
+		return; //strIcon = "" , HexColour = "" 
 	}
 
+	//UNIT OR DESTRUCTIBLE VISUALIZER FOUND
 	if (Visualizer != none)
 	{
 		strIcon = Visualizer.GetMyHUDIcon();
@@ -1594,14 +1718,16 @@ simulated function FindHUDIconDetails(out string strIcon, out string HexColour)
 
 }
 
-//ensures we do this once on initial init
+//ensures we do this once on initial init (or when forced to update)
 //this is because all these checks are pretty intensive, especially if we have to go through the perks
 function UpdateDamageString(XComGameState_Unit UnitState)
 {
-	DamageString.SetValue(GetDamageString(UnitState));
+	DamageString.SetValue(class'X2EventListener_UFEGetDamage'.static.GetDamageString(self, UnitState));
 }
 
-function string GetDamageString(XComGameState_Unit UnitState, optional bool bForceSecondary)
+//	!! MOVED FUNCTION TO ELR TO AVOID DUPLICATE CODE !!
+/*
+function string GetDamageString(XComGameState_Unit UnitState, optional bool bForcedToUseSecondary)
 {
 	local StateObjectReference 		ObjectRef;
 	local X2AbilityTemplateManager 	AbilityManager;
@@ -1618,25 +1744,25 @@ function string GetDamageString(XComGameState_Unit UnitState, optional bool bFor
 	WeaponState = UnitState.GetPrimaryWeapon();
 
 	//if primary is a bust attempt to get secondary - should fix 'secondary only ' users
-	if (WeaponState == none || bForceSecondary)
+	if (WeaponState == none || bForcedToUseSecondary)
 	{
 		WeaponState = UnitState.GetSecondaryWeapon();
-		bForceSecondary = true;
+		bForcedToUseSecondary = true;
 	}
 
-	//if weapon is still bust, bail to perks
+	//if weapon is still bust, bail to perks, if not find damage ranges
 	if (WeaponState != none)
 	{
 		WeaponTemplate = X2WeaponTemplate (WeaponState.GetMyTemplate()) ;
 
+		//calculate min and max damage value from WeaponDamageValues
 		minDamage = WeaponTemplate.BaseDamage.Damage - WeaponTemplate.BaseDamage.Spread;
 		maxDamage = WeaponTemplate.BaseDamage.Damage + WeaponTemplate.BaseDamage.Spread;
 
 		if ( WeaponTemplate.BaseDamage.PlusOne > 0 ) { maxDamage++; }
 
-		//=================================================================//
-		// ===== ACCOUNT FOR BREAKTHROUGH DAMAGES TO THE BASE WEAPON ===== //
-		//=================================================================//
+		// ===== ACCOUNT FOR BREAKTHROUGH DAMAGES TO THE BASE WEAPON, ONLY EVER APPLIES TO PRIMARY WEAPONS !! ===== //
+		// WE ONLY DO THIS CHECK ONCE FOR CASES WHERE THE DAMAGE STRING IS FORCED TO UPDATE, CUTS OUT A HUGE LAG HANG
 		if (!m_BreakthroughBonusesFound)
 		{
 			//get breakthough from HQ
@@ -1680,7 +1806,7 @@ function string GetDamageString(XComGameState_Unit UnitState, optional bool bFor
 		//damage output is 'none', force try secondary .. if none and secondary still has none, try perks
 		if( (maxDamage - minDamage < 0 || maxDamage <= 0))
 		{
-			if (bForceSecondary)
+			if (bForcedToUseSecondary)
 			{
 				return GetDamageString_FromPerks(UnitState); //"---";
 			}
@@ -1704,6 +1830,7 @@ function string GetDamageString(XComGameState_Unit UnitState, optional bool bFor
 
 //this is potentially very intensive as it looks at ALL the units perks and gets absolute minimum to maximum damage output across all perks
 //thus this is only used on units that have no damage display after a primary and secondary weapon check is done
+//which should minimise when this happens, except for fuxxing chryssalid swarms .. and the lost ..
 function string GetDamageString_FromPerks(XComGameState_Unit UnitState)
 {
 	local array<StateObjectReference> arrData;
@@ -1721,7 +1848,7 @@ function string GetDamageString_FromPerks(XComGameState_Unit UnitState)
 		AbilityState = XComGameState_Ability(History.GetGameStateForObjectID(Data.ObjectID));
 
 		//MinDamagePreview, MaxDamagePreview, AllowsShield ? are out values
-		//Feeding ourself gets us output damage as ourselves as primary target
+		//Feeding ourself gets us output damage as ourselves as primary target, not perfect but a neccessary evil ..
 		//Feeding a null Target gets us Mutli-target attacks -- NOT REQUIRED ? IT WAS ALWAYS REPORTING the same as this --
 		AbilityState.GetDamagePreview(UnitState.GetReference(), MinDamagePreview, MaxDamagePreview, AllowsShield);
 
@@ -1754,3 +1881,4 @@ function string GetDamageString_FromPerks(XComGameState_Unit UnitState)
 	//damage is a range, x - y
 	return minDamage $ "-" $ maxDamage;
 }
+*/

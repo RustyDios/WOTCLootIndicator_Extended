@@ -104,12 +104,10 @@ Project is hosted on GitHub [url=https://github.com/RustyDios/WOTCLootIndicator_
 	Tuple = new class'LWTuple';
 	Tuple.Id = 'UIUnitFlag_OverrideShowInfo';
 	Tuple.Data.Add(2);
-	Tuple.Data[0].kind = LWTVObject;	// The targeted unit.
-	Tuple.Data[0].o = UnitState;
-	Tuple.Data[1].kind = LWTVBool;		// Whether the info should be available.
-	Tuple.Data[1].b = true;
+	Tuple.Data[0].kind = LWTVObject;	Tuple.Data[0].o = NewUnitState;	// The targeted unit.
+	Tuple.Data[1].kind = LWTVBool;		Tuple.Data[1].b = true;			// Whether the info should be available.
 
-	`XEVENTMGR.TriggerEvent('UIUnitFlag_OverrideShowInfo', Tuple);
+	`XEVENTMGR.TriggerEvent('UIUnitFlag_OverrideShowInfo', Tuple, NewUnitState);
 	//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	//a HIDE return should set the data false, we flip it here, so that bObfuscate = true
@@ -125,12 +123,9 @@ Project is hosted on GitHub [url=https://github.com/RustyDios/WOTCLootIndicator_
 	NSLWTuple = new class'LWTuple';
 	NSLWTuple.Id = 'UIUnitFlag_AddDisplayInfo';
 	NSLWTuple.Data.Add(3);
-	NSLWTuple.Data[0].kind = LWTVObject;	// Sending the UnitFlag
-	NSLWTuple.Data[0].o = self;
-	NSLWTuple.Data[1].kind = LWTVString;	// What the info should be
-	NSLWTuple.Data[1].s = "";
-	NSLWTuple.Data[2].kind = LWTVBool;		// Should this trigger once
-	NSLWTuple.Data[2].b = false;
+	NSLWTuple.Data[0].kind = LWTVObject;	NSLWTuple.Data[0].o = self;		// Sending the UnitFlag
+	NSLWTuple.Data[1].kind = LWTVString;	NSLWTuple.Data[1].s = "";		// What the info should be
+	NSLWTuple.Data[2].kind = LWTVBool;		NSLWTuple.Data[2].b = false;	// Should this trigger once
 	//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 [WOTCLootIndicator_Extended.WOTCLootIndicator_Extended]
@@ -147,12 +142,13 @@ The UFE is set to handle all the ECharStatType from X2TacticalGameRulesetDataStr
   Otherwise it is important for Triggered text lines for the Stat=eStat_Invalid to remain, even if you want to report a valid stat
 
 If the stat type is eStat_Invalid and the entry is obfuscated it will display as "#?#"
+If the stat type is NOT eStat_Invalid and the entry is obfuscated it will display as "##" (or "#-#" for the damage type only)
 
 An example listener is included in the mod, see the X2EventListener_UFEGetDamage.uc
 
 // ================================================================================================================================================================
 // ================================================================================================================================================================
-ECharStatType 's I could find
+ECharStatType's I could find
 
 [eStat_HP]				HP/MaxHP
 [eStat_Offense]			perception (aim)
@@ -176,7 +172,7 @@ ECharStatType 's I could find
 [eStat_SightRadius]
 
 [eStat_HackDefense]
-[eStat_ArmorChance]		NOT pips ??
+[eStat_ArmorChance]		NOT pips ?? - DEPRECIATED THIS SHOULD ALWAYS BE 100 IF THE UNIT HAS ARMOUR!
 
 //things that should not have a value
 [eStat_Strength]		used in vs test for knockout from zerkers and stunnies
