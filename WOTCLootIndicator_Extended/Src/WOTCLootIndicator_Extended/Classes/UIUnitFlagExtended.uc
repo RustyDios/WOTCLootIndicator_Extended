@@ -32,9 +32,9 @@ var bool bObfuscate;
 
 //used for the damage display
 var int m_BreakthroughBonuses;
-var bool m_BreakthroughBonusesFound;
+var bool m_BreakthroughBonusesFound, bWeaponChecked;
 
-var CachedString HealthBarColour, ShieldBarColour, DamageString;
+var CachedString HealthBarColour, ShieldBarColour, DamageString, ShredString, PierceString;
 var CachedString HealthBarColourPreMC, ShieldBarColourPreMC;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +69,10 @@ simulated function InitFlag (StateObjectReference ObjectRef)
 
 	HealthBarColour = new class'CachedString';	HealthBarColourPreMC = new class'CachedString';
 	ShieldBarColour = new class'CachedString';	ShieldBarColourPreMC = new class'CachedString';
+
 	DamageString	= new class'CachedString';
+	ShredString		= new class'CachedString';
+	PierceString 	= new class'CachedString';
 
 	// Determine what we are representing
 	DestructibleActor = XComDestructibleActor(History.GetVisualizer(StoredObjectID));
@@ -430,6 +433,16 @@ simulated function SetArmorPoints(optional int _iArmor = 0)
 	}
 
 }
+
+//THIS DOESN'T WORK HOW I THOUGHT IT WOULD. THIS IS INCOMING FROM ANOTHER UNIT, NOT WHAT *THIS* UNIT CAN DO
+//simulated function SetArmorPointsPreview(optional int _iPossibleShred = 0, optional int _iPossiblePierce)
+//{
+//	//we're only here to collect input data, everything else is the same as base game
+//	super.SetArmorPointsPreview(_iPossibleShred, _iPossiblePierce);
+//
+//	if (_iPossibleShred > int(ShredString.GetValue())) { ShredString.SetValue(string(_iPossibleShred)); }
+//	if (_iPossiblePierce > int(PierceString.GetValue())) { PierceString.SetValue(string(_iPossiblePierce)); }
+//}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //	BUILD LOOT INDICATOR AND SHOW IF REQUIRED
@@ -869,7 +882,7 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 			// This was a triggered response which was set to once only, we do not want to update the previously set value
 			case eStat_Invalid: break;
 
-			// Prevent the warning from the default block, as HP is handled elsewhere
+			// Prevent the warning from the default block, as HP is handled elsewhere as it needs to account for units and destructables
 			case eStat_HP: break;
 
 			// Stats with standard handling
@@ -880,27 +893,35 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 			case eStat_HackDefense:
 			case eStat_PsiOffense:
 			case eStat_ShieldHP:
-			case eStat_ArmorChance: 		//DEPRECIATED?
-			case eStat_ArmorPiercing:
 			case eStat_CritChance:
 			case eStat_FlankingCritChance:
 			case eStat_FlankingAimBonus:
 			case eStat_DetectionRadius:
 			case eStat_DetectionModifier:
-			case eStat_UtilityItems:
+			case eStat_Strength:
+			case eStat_SightRadius:
+			case eStat_AlertLevel:			//ENEMY ONLY STAT
+			case eStat_UtilityItems:		//UTIL ITEM SIZE?
+			case eStat_CombatSims:			//PCS SLOTS SIZE?
+			case eStat_Job:					//ONLY FOR LWOTC?
+			case eStat_ArmorChance: 		//DEPRECIATED?
 			case eStat_BackpackSize: 		//DEPRECIATED?
 			case eStat_FlightFuel: 			//DEPRECIATED?
-			case eStat_AlertLevel:
-			case eStat_Strength:
 			case eStat_SeeMovement: 		//DEPRECIATED?
-			case eStat_SightRadius:
 			case eStat_HearingRadius: 		//DEPRECIATED?
-			case eStat_CombatSims:
-			case eStat_Job:
 				Entry.SetValue(iCurrentValue);
 			break;
 
+			// Piercing doesn't seem to work as a normal stat, RJ's YAF1 gets the pierce value direct from the weapon
+			// Normal unit flag uses SetAbilityDamagePreview from the manager, 
+			// which needs an ability state and is for an attacker vs us to adjust the pips display
+			// So here we jump the hoops to get the Primary Weapon Base values like YAF1 does
+			case eStat_ArmorPiercing:
+				Entry.SetValue(GetWeaponValue(NewUnitState));
+			break;
+
 			// Armour has special handling as the pips use a combination of stat+effect
+			// Thankfully XCGS_Unit has a handy helper function
 			case eStat_ArmorMitigation:
 				fCurrentValue = NewUnitState.GetArmorMitigationForUnitFlag();
 				iCurrentValue = int(fCurrentValue);
@@ -947,7 +968,7 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 			default:
 				Entry.Hide();
 
-				`LOG("UNIDENTIFIED STAT TYPE PASSED TO SWITCHBLOCK :"
+				`LOG("UNIDENTIFIED STAT TYPE PASSED TO UFE SWITCHBLOCK :"
 						@"\n Block	:" $Entry.Definition.BlockName
 						@"\n Type	:" $Entry.Definition.Type
 						@"\n Stat	:" $Entry.Definition.Stat
@@ -1723,6 +1744,27 @@ simulated function FindHUDIconDetails(out string strIcon, out string HexColour)
 function UpdateDamageString(XComGameState_Unit UnitState)
 {
 	DamageString.SetValue(class'X2EventListener_UFEGetDamage'.static.GetDamageString(self, UnitState));
+}
+
+function string GetWeaponValue(XComGameState_Unit UnitState, optional bool bGetShredInstead)
+{
+	local XComGameState_Item	WeaponState;
+	local WeaponDamageValue 	BaseDamageValue;
+
+	if (!bWeaponChecked)
+	{
+		bWeaponChecked = true;
+
+		WeaponState = UnitState.GetPrimaryWeapon();
+		if (WeaponState != none)
+		{
+			WeaponState.GetBaseWeaponDamageValue(none, BaseDamageValue);
+			PierceString.SetValue(string(BaseDamageValue.Pierce));
+			ShredString.SetValue(string(BaseDamageValue.Shred));
+		}
+	}
+
+	return bGetShredInstead ? ShredString.GetValue() : PierceString.GetValue();
 }
 
 //	!! MOVED FUNCTION TO ELR TO AVOID DUPLICATE CODE !!
