@@ -20,8 +20,10 @@ var config array<StatsBlock> StatsToShow;
 var config array<SpecialBarColour> SpecialBarColours_Health, SpecialBarColours_Shield;
 
 var config array<EffectStatusIcon> EffectStatusIcons;
-var config array<string> StatusIconPath_Frozen;
-var config string StatusIconPath_Bound, StatusIconPath_Bleed, StatusIconPath_Mined;
+var config array<string> StatusIconPath_FrozenM, StatusIconPath_FrozenC;
+var config string StatusIconPath_BoundM, StatusIconPath_BleedM, StatusIconPath_MinedM;
+var config string StatusIconPath_BoundC, StatusIconPath_BleedC, StatusIconPath_MinedC;
+var config bool bUseColouredStatusIcons;
 
 var config EWidgetColor eColour_WillBar;
 

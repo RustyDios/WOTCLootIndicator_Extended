@@ -252,6 +252,9 @@ UILibrary_UIFlagExtended.status_ripple			//claus ripple
 UILibrary_UIFlagExtended.status_shielded		//ESO/shields 
 UILibrary_UIFlagExtended.status_timer			//RPT 
 
+UILibrary_UIFlagExtended.status_night			//night rules
+UILibrary_UIFlagExtended.status_requiem			//requiem
+
 //NEW ICONS FOR STATUS - COLOURED
 UILibrary_UIFlagExtended.statuscol_berserk
 UILibrary_UIFlagExtended.statuscol_blinded

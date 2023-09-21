@@ -56,7 +56,8 @@ struct SpecialBarColour
 struct EffectStatusIcon
 {
 	var name EffectName;
-	var string IconPath;
+	var string IconPathM;
+	var string IconPathC;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -65,59 +66,104 @@ struct EffectStatusIcon
 
 static function array<string> GetCurrentStatusIconPaths(XComGameState_Unit NewUnitState, bool bIsBound)
 {
-	local array<string> Icons;
+	local array<EffectStatusIcon> EffectStatusIcons;
 	local EffectStatusIcon ConfigStatusIcon;
+	local array<string> IconPaths;
+	local string CurrentPath;
+	local bool bUseColouredStatusIcons;
 
-	Icons.length = 0;
+	IconPaths.length = 0;
 
 	//get icon paths from CHL/source, thanks to CHL Issue #1120 this will only contain image paths for statuses that have one
-	Icons = NewUnitState.GetUISummary_UnitStatusIcons();
+	// !! NOTE !! -- I HAVE ZERO CONTROL OVER WHAT THE ICON PATHS ARE SET TO FROM THIS STEP
+	// HOWEVER I INCLUDE IT FOR COMPATIBILITY WITH OTHER MODS/USERS
+	IconPaths = NewUnitState.GetUISummary_UnitStatusIcons();
+
+	//CHECK IF WE SHOULD USE COLOURED ICONS OR NOT
+	bUseColouredStatusIcons = class'WOTCLootIndicator_Extended'.default.bUseColouredStatusIcons;
 
 	//adding extended viper bind effect checks
-	if (bIsBound && Icons.Find(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Bound) == INDEX_NONE)
-	{ Icons.AddItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Bound); }
+	if (bIsBound)
+	{
+		CurrentPath = bUseColouredStatusIcons ? class'WOTCLootIndicator_Extended'.default.StatusIconPath_BoundC : class'WOTCLootIndicator_Extended'.default.StatusIconPath_BoundM;
+		AddIfMissing(CurrentPath, IconPaths);
+	}
 
 	//add icons for common status effects that might not have them, if they are not already here
 	//add icons that have been setup through config .. burning, poison, ko, marked, disorient, panic, stunned, freeze, mind control
-	foreach class'WOTCLootIndicator_Extended'.default.EffectStatusIcons(ConfigStatusIcon)
+	EffectStatusIcons = class'WOTCLootIndicator_Extended'.default.EffectStatusIcons;
+	
+	foreach EffectStatusIcons(ConfigStatusIcon)
 	{
-		if (Icons.Find(ConfigStatusIcon.IconPath) == INDEX_NONE && NewUnitState.AffectedByEffectNames.Find(ConfigStatusIcon.EffectName) != INDEX_NONE)
+		if (NewUnitState.AffectedByEffectNames.Find(ConfigStatusIcon.EffectName) != INDEX_NONE)
 		{
-			Icons.AddItem(ConfigStatusIcon.IconPath);
+			CurrentPath = bUseColouredStatusIcons ? ConfigStatusIcon.IconPathC : ConfigStatusIcon.IconPathM;
+			AddIfMissing(CurrentPath, IconPaths);
 		}
 	}
 
 	//adding rupture as a status icon .. instead of RealizeRupture in UnitFlag
-	if ( Icons.Find(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Bleed) == INDEX_NONE && NewUnitState.GetRupturedValue() > 0 )
-	{ Icons.AddItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Bleed); }		//{ Icons.AddItem("img:///gfxUnitFlag.shred_icon"); }
+	if (NewUnitState.GetRupturedValue() > 0 )
+	{
+		CurrentPath = bUseColouredStatusIcons ? class'WOTCLootIndicator_Extended'.default.StatusIconPath_BleedC : class'WOTCLootIndicator_Extended'.default.StatusIconPath_BleedM;
+		AddIfMissing(CurrentPath, IconPaths); //{ IconPaths.AddItem("img:///gfxUnitFlag.shred_icon"); }
+	}
 
 	//adding homing mine as a status icon .. also included in effect list above .. instead of RealizeClaymore in UnitFlag
-	if ( Icons.Find(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Mined) == INDEX_NONE && NewUnitState.AffectedByEffectNames.Find(class'X2Effect_HomingMine'.default.EffectName) != INDEX_NONE)
-	{ Icons.AddItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Mined); }		//{ Icons.AddItem("img:///gfxUnitFlag.UnitFlag_IC0");	}
+	if (NewUnitState.AffectedByEffectNames.Find(class'X2Effect_HomingMine'.default.EffectName) != INDEX_NONE)
+	{
+		CurrentPath = bUseColouredStatusIcons ? class'WOTCLootIndicator_Extended'.default.StatusIconPath_MinedC : class'WOTCLootIndicator_Extended'.default.StatusIconPath_MinedM;
+		AddIfMissing(CurrentPath, IconPaths); //{ IconPaths.AddItem("img:///gfxUnitFlag.UnitFlag_IC0");	}
+	}
 
-	//Cascade Frost Icons, if frozen .. remove chillx ... if chill2 remove chill1
-	//this should mean we always only have the 'highest' chill icon 
-	if (Icons.Find(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Frozen[3]) != INDEX_NONE)
-	{
-		Icons.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Frozen[2]);
-		Icons.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Frozen[1]);
-		Icons.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Frozen[0]);
-	}
-	else if (Icons.Find(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Frozen[2]) != INDEX_NONE)
-	{
-		Icons.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Frozen[1]);
-		Icons.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Frozen[0]);
-	}
-	else if (Icons.Find(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Frozen[1]) != INDEX_NONE)
-	{
-		Icons.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_Frozen[0]);
-	}
+	MergeFrostPaths(IconPaths);
 
 	// <> TODO : Add MindControl/Domination/Hacked icons ?
 	// <> TODO : Add concealment status as a status icon ?
 	// <> TODO : Add overwatch icon as a status icon ?
 
-	return Icons;
+	return IconPaths;
+}
+
+static function AddIfMissing(string CurrentPath, out array<string> IconPaths)
+{
+	if (IconPaths.Find(CurrentPath) == INDEX_NONE )
+	{
+		IconPaths.AddItem(CurrentPath);
+	}
+}
+
+static function MergeFrostPaths(out array<string> IconPaths)
+{
+	//Cascade Frost Icons, if frozen .. remove chillx ... if chill2 remove chill1
+	//this should mean we always only have the 'highest' chill icon 
+	if (IconPaths.Find(class'WOTCLootIndicator_Extended'.default.StatusIconPath_FrozenM[3]) != INDEX_NONE
+		|| IconPaths.Find(class'WOTCLootIndicator_Extended'.default.StatusIconPath_FrozenC[3]) != INDEX_NONE)
+	{
+		IconPaths.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_FrozenM[2]);
+		IconPaths.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_FrozenM[1]);
+		IconPaths.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_FrozenM[0]);
+
+		IconPaths.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_FrozenC[2]);
+		IconPaths.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_FrozenC[1]);
+		IconPaths.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_FrozenC[0]);
+	}
+	else if (IconPaths.Find(class'WOTCLootIndicator_Extended'.default.StatusIconPath_FrozenM[2]) != INDEX_NONE
+		|| IconPaths.Find(class'WOTCLootIndicator_Extended'.default.StatusIconPath_FrozenC[2]) != INDEX_NONE)
+	{
+		IconPaths.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_FrozenM[1]);
+		IconPaths.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_FrozenM[0]);
+
+		IconPaths.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_FrozenC[1]);
+		IconPaths.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_FrozenC[0]);
+	}
+	else if (IconPaths.Find(class'WOTCLootIndicator_Extended'.default.StatusIconPath_FrozenM[1]) != INDEX_NONE
+		|| IconPaths.Find(class'WOTCLootIndicator_Extended'.default.StatusIconPath_FrozenC[1]) != INDEX_NONE)
+	{
+		IconPaths.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_FrozenM[0]);
+
+		IconPaths.RemoveItem(class'WOTCLootIndicator_Extended'.default.StatusIconPath_FrozenC[0]);
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////

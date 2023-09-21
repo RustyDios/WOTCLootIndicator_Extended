@@ -901,8 +901,8 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 			case eStat_Strength:
 			case eStat_SightRadius:
 			case eStat_AlertLevel:			//ENEMY ONLY STAT
-			case eStat_UtilityItems:		//UTIL ITEM SIZE?
-			case eStat_CombatSims:			//PCS SLOTS SIZE?
+			case eStat_UtilityItems:		//UTIL ITEM SIZE!
+			case eStat_CombatSims:			//PCS SLOTS SIZE!
 			case eStat_Job:					//ONLY FOR LWOTC?
 			case eStat_ArmorChance: 		//DEPRECIATED?
 			case eStat_BackpackSize: 		//DEPRECIATED?
@@ -965,6 +965,8 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 				}
 			break;
 
+			// FOR ANYTHING NOT ON THE LIST WE PREFER TO LOG AS AN ERROR REGARDLESS IF LOGGING IS ON
+			// WE ALSO HIDE THIS ERROR ENTRY
 			default:
 				Entry.Hide();
 
@@ -977,9 +979,11 @@ simulated protected function UpdateUnitStats (XComGameState_Unit NewUnitState)
 						@"\n Hex	:" $Entry.Definition.HexColour
 						@"\n Obs	:" $Entry.Definition.bCanObsfucate
 						@"\n ID		:" $Entry.Definition.SpecialTriggerID
-					, class'WOTCLootIndicator_Extended'.default.bRustyUIFlagLog,'WOTC_RUSTY_UIFLAG');
-		}
-	}
+					, /* class'WOTCLootIndicator_Extended'.default.bRustyUIFlagLog */ ,'WOTC_RUSTY_UIFLAG');
+
+		} //END SWITCH
+
+	} //END STATROWS FOREACH
 }
 
 // DEPRECIATED - SHOW DAMAGE SHOULD ALWAYS BE FALSE - NOW PART OF NORMAL STATS BLOCK
