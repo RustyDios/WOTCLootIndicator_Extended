@@ -2,7 +2,7 @@
 //  FILE:   UIUnitFlagExtended  by Xymanek && RustyDios
 //  
 //	File created	13/07/22	17:00
-//	LAST UPDATED	30/08/23	03:30
+//	LAST UPDATED	04/10/23	06:15
 //
 //	<> TODO : Rework && Update Y Shift value correctly
 //	<> TODO : Automate - Multiple Stat lines if the Stats Block excedes HealthBar length
@@ -103,7 +103,6 @@ simulated function InitFlag (StateObjectReference ObjectRef)
 	}
 
 	//doing this once here instead of multiple times throughout the file
-	//also called in the UnitChangedTeam
 	//needs to be done after we determine what we are representing by ObjectType!
 	HUDIconString = ""; HUDIconColour = "";
 	FindHUDIconDetails(HUDIconString, HUDIconColour);
@@ -546,6 +545,12 @@ simulated protected function BuildNameRow ()
 simulated protected function UpdateNameRow (XComGameState_Unit NewUnitState)
 {
 	local string strUnitName;
+
+	if (HUDIconString == "" || HUDIconColour == "")
+	{
+		//FORCE AN UPDATE/CHECK OF THE ICON AND COLOUR BEFORE SETTING IT
+		FindHUDIconDetails(HUDIconString, HUDIconColour);
+	}
 
 	if (HudHeadIcon != none)
 	{
