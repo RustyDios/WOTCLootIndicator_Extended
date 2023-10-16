@@ -230,7 +230,7 @@ simulated function RespondToNewGameState(XComGameState NewState, bool bForceUpda
 			HistoryIndex = ObjectState.GetParentGameState().HistoryIndex;
 
 			//UPDATE ONLY IF NEW
-			if (LastHistoryIndex < HistoryIndex)
+			if (LastHistoryIndex < HistoryIndex || VisualizedHistoryIndex < HistoryIndex)
 			{
 				LastHistoryIndex = HistoryIndex;
 				VisualizedHistoryIndex = HistoryIndex;
