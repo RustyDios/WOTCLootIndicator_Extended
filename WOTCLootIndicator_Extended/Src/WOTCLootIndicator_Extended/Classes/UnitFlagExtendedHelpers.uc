@@ -56,6 +56,7 @@ struct SpecialBarColour
 struct EffectStatusIcon
 {
 	var name EffectName;
+	var string IconPath;
 	var string IconPathM;
 	var string IconPathC;
 };
@@ -97,7 +98,25 @@ static function array<string> GetCurrentStatusIconPaths(XComGameState_Unit NewUn
 	{
 		if (NewUnitState.AffectedByEffectNames.Find(ConfigStatusIcon.EffectName) != INDEX_NONE)
 		{
-			CurrentPath = bUseColouredStatusIcons ? ConfigStatusIcon.IconPathC : ConfigStatusIcon.IconPathM;
+			//if set to switch to colour, use colour ... if not use mono .. if mono is blank, try legacy value, if no legacy value? fallback
+			if (bUseColouredStatusIcons && ConfigStatusIcon.IconPathC != "")
+			{
+				CurrentPath = ConfigStatusIcon.IconPathC;
+			}
+			else if (ConfigStatusIcon.IconPathM != "")
+			{
+				CurrentPath = ConfigStatusIcon.IconPathM;
+			}
+			else if (ConfigStatusIcon.IconPath != "")
+			{
+				CurrentPath = ConfigStatusIcon.IconPath;
+			}
+			else
+			{
+				CurrentPath = "img:///UILibrary_UIFlagExtended.statuscol_confused"; //FALLBACK IF CANT FIND ICON
+			}
+			
+			//CurrentPath = bUseColouredStatusIcons ? ConfigStatusIcon.IconPathC : ConfigStatusIcon.IconPathM != "" ? ConfigStatusIcon.IconPathM : ConfigStatusIcon.IconPath;
 			AddIfMissing(CurrentPath, IconPaths);
 		}
 	}
@@ -127,7 +146,7 @@ static function array<string> GetCurrentStatusIconPaths(XComGameState_Unit NewUn
 
 static function AddIfMissing(string CurrentPath, out array<string> IconPaths)
 {
-	if (IconPaths.Find(CurrentPath) == INDEX_NONE )
+	if (CurrentPath != "" && IconPaths.Find(CurrentPath) == INDEX_NONE )
 	{
 		IconPaths.AddItem(CurrentPath);
 	}
