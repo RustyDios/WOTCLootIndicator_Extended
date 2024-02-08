@@ -201,7 +201,10 @@ UILibrary_UIFlagExtended.UIFlag_Damage
 UILibrary_UIFlagExtended.UIFlag_DamCrit
 UILibrary_UIFlagExtended.UIFlag_Def
 UILibrary_UIFlagExtended.UIFlag_Dodge
+UILibrary_UIFlagExtended.UIFlag_FlankAim
+UILibrary_UIFlagExtended.UIFlag_FlankCrit
 UILibrary_UIFlagExtended.UIFlag_Hack
+UILibrary_UIFlagExtended.UIFlag_HackDef
 UILibrary_UIFlagExtended.UIFlag_Health
 UILibrary_UIFlagExtended.UIFlag_Loot
 UILibrary_UIFlagExtended.UIFlag_Mob
@@ -209,6 +212,8 @@ UILibrary_UIFlagExtended.UIFlag_Psi
 UILibrary_UIFlagExtended.UIFlag_PsiColoured
 UILibrary_UIFlagExtended.UIFlag_Shield
 UILibrary_UIFlagExtended.UIFlag_Shield2
+UILibrary_UIFlagExtended.UIFlag_Sight
+UILibrary_UIFlagExtended.UIFlag_Strength
 UILibrary_UIFlagExtended.UIFlag_Will
 
 //ICONS FOR RJSS/YAF1
