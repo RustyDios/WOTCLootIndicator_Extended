@@ -178,7 +178,7 @@ function EventListenerReturn UnitChangedTeam_Listener(Object EventData, Object E
 		}
 		else
 		{
-			//ForceBarColours(HealthBarColourPreMC.GetValue(), ShieldBarColourPreMC.GetValue() );
+			//ForceBarColours(HealthBarColourPreMC.GetValue(), ShieldBarColourPreMC.GetValue(), NewUnitState.bIsSpecial );
 
 			//FORCE THE COLOURS TO CHANGE AND RESET ...
 			HealthBarColour.SetValue("696969");	HealthBarColour.SetValue(HealthBarColourPreMC.GetValue());
@@ -243,14 +243,18 @@ simulated function RespondToNewGameState(XComGameState NewState, bool bForceUpda
 //  Called from the UIUnitFlagManager's OnTick
 simulated function Update(XGUnit kNewActiveUnit)
 {
+	local XComGameState_Unit UnitState;
+
 	// Expanded version of the same check as in super
 	// If not shown or ready, leave. has a !bIsInited return
 	if (!IsFullyInited()) return;
 
 	super.Update(kNewActiveUnit);
 
+	UnitState = XComGameState_Unit(History.GetGameStateForObjectID(StoredObjectID));
+
 	//this checks if the colour bar(s) have been created yet .. once they have been created, set the colour correctly
-	TrySetHealthBarColour();
+	TrySetHealthBarColour(UnitState.bIsSpecial);
 	TrySetShieldBarColour();
 }
 
@@ -1299,25 +1303,28 @@ simulated function TrySetShieldBarColour()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //	UPDATE/REFRESH BAR COLOURS -- FORCED -- CURRENTLY NOT ACTUALLY USED
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-simulated function ForceBarColours(string HealthHex, string ShieldHex)
+/*
+simulated function ForceBarColours(string HealthHex, string ShieldHex, optional bool bWasSpecial)
 {
 	local float fTotalHealthBars;
 	local int i;
 
 	AS_SetMCColor(MCPath $".healthMeter.theMeter", HealthHex);
 
-	fTotalHealthBars = Movie.GetVariableNumber(MCPath $ ".MeterTotal");
-	for (i = 0 ; i < fTotalHealthBars ; i++)
+	if (bWasSpecial)
 	{
-		AS_SetMCColor(MCPath $".healthMeter.healthMeter" $ i $ ".theMeter", HealthHex);
+		fTotalHealthBars = Movie.GetVariableNumber(MCPath $ ".MeterTotal");
+		for (i = 0 ; i < fTotalHealthBars ; i++)
+		{
+			AS_SetMCColor(MCPath $".healthMeter.healthMeter" $ i $ ".theMeter", HealthHex);
+		}
 	}
 
 	AS_SetMCColor(MCPath $".healthMeter.shieldMeter.theMeter", ShieldHex);
 
 	MC.ProcessCommands(true);
 }
-
+*/
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //	UPDATE/SET THE BIG ALIEN HEAD - THE SPECIAL RULER HEAD
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1620,10 +1627,13 @@ function int GetYShift()
 	// BUMP UP IF THEY ARE A 'RULER' FOR THE NUMBER OF EXTRA HP BARS, ACCOUNTS FOR ANY UNIT WITH MORE THAN ONE HEALTH BAR
 	// INCLUDING VIPERKING, ARCHONKING, ZERKER QUEEN, HIVE QUEEN, CotK ... ALSO BUMPS CORRECTLY FOR BETA STRIKE BARS
 	// 		!! MUCH THANKS TO IRIDAR, ROBOJUMPER AND XYMANEK FOR THE AID AND INSPIRATION !!
-	fTotalHealthBars = Movie.GetVariableNumber(MCPath $ ".MeterTotal");
-	if (fTotalHealthBars > 1.0)
+	if (UnitState.bIsSpecial)
 	{
-		Shift += class'WOTCLootIndicator_Extended'.default.ALIENRULER_SHIFT_Y * int(fTotalHealthBars -1);
+		fTotalHealthBars = Movie.GetVariableNumber(MCPath $ ".MeterTotal");
+		if (fTotalHealthBars > 1.0)
+		{
+			Shift += class'WOTCLootIndicator_Extended'.default.ALIENRULER_SHIFT_Y * int(fTotalHealthBars -1);
+		}
 	}
 
 	// BUMP UP IF THEY HAVE A WILL BAR OR IT IS A DESTRUCTIBLE OBJECT (SAME VALUE NEEDED FOR BOTH ADJUSTMENTS)
