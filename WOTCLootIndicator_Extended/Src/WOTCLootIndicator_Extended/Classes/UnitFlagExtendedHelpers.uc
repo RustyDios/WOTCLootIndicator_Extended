@@ -2,7 +2,7 @@
 //  FILE:   UnitFlagExtendedHelpers  by Xymanek && RustyDios
 //  
 //	File created	13/07/22	17:00
-//	LAST UPDATED	28/03/23	02:30
+//	LAST UPDATED	17/02/24	03:45
 //
 //=============================================================
 
@@ -91,7 +91,7 @@ static function array<string> GetCurrentStatusIconPaths(XComGameState_Unit NewUn
 	}
 
 	//add icons for common status effects that might not have them, if they are not already here
-	//add icons that have been setup through config .. burning, poison, ko, marked, disorient, panic, stunned, freeze, mind control
+	//add icons that have been setup through config .. burning, poison, ko, marked, disorient, panic, stunned, freeze, mind control, ETC ETC
 	EffectStatusIcons = class'WOTCLootIndicator_Extended'.default.EffectStatusIcons;
 	
 	foreach EffectStatusIcons(ConfigStatusIcon)
@@ -113,7 +113,7 @@ static function array<string> GetCurrentStatusIconPaths(XComGameState_Unit NewUn
 			}
 			else
 			{
-				CurrentPath = "img:///UILibrary_UIFlagExtended.statuscol_confused"; //FALLBACK IF CANT FIND ICON
+				CurrentPath = "img:///UILibrary_UIFlagExtended.statuscol_confused"; //FALLBACK IF CANT FIND ANY ICONS
 			}
 			
 			//CurrentPath = bUseColouredStatusIcons ? ConfigStatusIcon.IconPathC : ConfigStatusIcon.IconPathM != "" ? ConfigStatusIcon.IconPathM : ConfigStatusIcon.IconPath;
@@ -124,7 +124,7 @@ static function array<string> GetCurrentStatusIconPaths(XComGameState_Unit NewUn
 	//adding rupture as a status icon .. instead of RealizeRupture in UnitFlag
 	if (NewUnitState.GetRupturedValue() > 0 )
 	{
-		CurrentPath = bUseColouredStatusIcons ? class'WOTCLootIndicator_Extended'.default.StatusIconPath_BleedC : class'WOTCLootIndicator_Extended'.default.StatusIconPath_BleedM;
+		CurrentPath = bUseColouredStatusIcons ? class'WOTCLootIndicator_Extended'.default.StatusIconPath_RuptureC : class'WOTCLootIndicator_Extended'.default.StatusIconPath_RuptureM;
 		AddIfMissing(CurrentPath, IconPaths); //{ IconPaths.AddItem("img:///gfxUnitFlag.shred_icon"); }
 	}
 

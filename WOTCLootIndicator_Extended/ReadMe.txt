@@ -232,7 +232,8 @@ UILibrary_UIFlagExtended.YA_Will
 //ICONS FOR STATUS - MONO RED
 UILibrary_Common.status_bound					//used for all bind effects
 UILibrary_Common.status_burning
-UILibrary_Common.status_berserk					//used for ACID
+UILibrary_UIFlagExtended.status_acid			//used for acid
+UILibrary_Common.status_berserk					
 UILibrary_Common.status_poison
 UILibrary_Common.status_unconscious
 UILibrary_Common.status_panic					//used for marked
@@ -241,7 +242,8 @@ UILibrary_Common.status_disoriented				//used for the four panic types
 UILibrary_Common.status_stunned
 UILibrary_Common.status_mindcontrolled
 
-UILibrary_UIFlagExtended.status_bleeding		//used for bleeding and ruptured
+UILibrary_UIFlagExtended.status_ruptured		//used for ruptured
+UILibrary_UIFlagExtended.status_bleeding		//used for bleeding
 UILibrary_UIFlagExtended.status_homingmine		//used for exploding effects
 UILibrary_UIFlagExtended.status_immobile		//used for being carried
 UILibrary_UIFlagExtended.status_poisonChrys
@@ -261,6 +263,7 @@ UILibrary_UIFlagExtended.status_night			//night rules
 UILibrary_UIFlagExtended.status_requiem			//requiem
 
 //NEW ICONS FOR STATUS - COLOURED
+UILibrary_UIFlagExtended.statuscol_acid
 UILibrary_UIFlagExtended.statuscol_berserk
 UILibrary_UIFlagExtended.statuscol_blinded
 UILibrary_UIFlagExtended.statuscol_bound
