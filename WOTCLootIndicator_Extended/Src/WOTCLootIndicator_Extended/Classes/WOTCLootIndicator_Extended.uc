@@ -21,8 +21,8 @@ var config array<SpecialBarColour> SpecialBarColours_Health, SpecialBarColours_S
 
 var config array<EffectStatusIcon> EffectStatusIcons;
 var config array<string> StatusIconPath_FrozenM, StatusIconPath_FrozenC;
-var config string StatusIconPath_BoundM, StatusIconPath_BleedM, StatusIconPath_MinedM;
-var config string StatusIconPath_BoundC, StatusIconPath_BleedC, StatusIconPath_MinedC;
+var config string StatusIconPath_BoundM, StatusIconPath_RuptureM, StatusIconPath_MinedM;
+var config string StatusIconPath_BoundC, StatusIconPath_RuptureC, StatusIconPath_MinedC;
 var config bool bUseColouredStatusIcons;
 
 var config EWidgetColor eColour_WillBar;
