@@ -249,13 +249,15 @@ simulated function Update(XGUnit kNewActiveUnit)
 	// If not shown or ready, leave. has a !bIsInited return
 	if (!IsFullyInited()) return;
 
-	super.Update(kNewActiveUnit);
-
 	UnitState = XComGameState_Unit(History.GetGameStateForObjectID(StoredObjectID));
 
 	//this checks if the colour bar(s) have been created yet .. once they have been created, set the colour correctly
 	TrySetHealthBarColour(UnitState.bIsSpecial);
 	TrySetShieldBarColour();
+
+	//MUST HAPPEN AFTER BAR COLOUR UPDATES AS IT ALSO SETS THE FLAG VISIBLE OR NOT
+	//A RARE CASE OF NEEDING TO CALL SUPER -AFTER- EXTRA CHANGES
+	super.Update(kNewActiveUnit);
 }
 
 simulated function UpdateFromState (XComGameState_BaseObject NewState, bool bInitialUpdate = false, bool bForceUpdate = false)
