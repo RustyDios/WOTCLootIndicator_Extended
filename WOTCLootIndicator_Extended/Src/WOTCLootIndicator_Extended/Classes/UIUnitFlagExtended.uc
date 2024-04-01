@@ -526,7 +526,7 @@ simulated protected function BuildNameRow ()
 		HudHeadIcon.InitIcon('HudHeadIcon',, false, true, class'WOTCLootIndicator_Extended'.default.INFO_ICON_SIZE);
 		HudHeadIcon.SetX(class'WOTCLootIndicator_Extended'.default.NAME_OFFSET_X);
 
-		HudHeadIcon.SetForegroundColor(class'UIUtilities_Colors'.const.BLACK_HTML_COLOR);
+		//HudHeadIcon.SetForegroundColor(class'UIUtilities_Colors'.const.BLACK_HTML_COLOR); //removed for EvilBob, we now 'assume' the foreground will be black
 		HudHeadIcon.Hide();
 	}
 
