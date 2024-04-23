@@ -1,4 +1,4 @@
-﻿You created an XCOM 2 Mod Project!
+﻿Rusty created another XCOM 2 Mod Project!
 
 On a roll now..... for over 2 years!!
 
