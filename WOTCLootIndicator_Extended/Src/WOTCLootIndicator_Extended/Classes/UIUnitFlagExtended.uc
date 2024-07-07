@@ -348,7 +348,7 @@ simulated function SetHitPoints (int _currentHP, int _maxHP)
 	}
 
 	// This handles both destructible and unit HP
-	SetHealthStatEntry(_currentHP, _maxHP);
+	SetHealthStatEntry(m_currentHitPoints.GetValue(), m_maxHitPoints.GetValue());
 }
 
 simulated function SetShieldPoints( int _currentShields, int _maxShields )
