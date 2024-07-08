@@ -2,13 +2,13 @@
 //  FILE:   UIUnitFlagExtended  by Xymanek && RustyDios
 //  
 //	File created	13/07/22	17:00
-//	LAST UPDATED	04/10/23	06:15
+//	LAST UPDATED	08/06/24	05:30
 //
 //	<> TODO : Rework && Update Y Shift value correctly
 //
 //=============================================================
 
-class UIUnitFlagExtended extends UIUnitFlag dependson(UnitFlagExtendedHelpers);
+class UIUnitFlagExtended extends UIUnitFlag dependson(UnitFlagExtendedHelpers, WOTCLootIndicator_Extended);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //	GAME STATE CACHING
@@ -243,16 +243,16 @@ simulated function RespondToNewGameState(XComGameState NewState, bool bForceUpda
 //  Called from the UIUnitFlagManager's OnTick
 simulated function Update(XGUnit kNewActiveUnit)
 {
-	local XComGameState_Unit UnitState;
+	//local XComGameState_Unit UnitState;
 
 	// Expanded version of the same check as in super
 	// If not shown or ready, leave. has a !bIsInited return
 	if (!IsFullyInited()) return;
 
-	UnitState = XComGameState_Unit(History.GetGameStateForObjectID(StoredObjectID));
+	//UnitState = XComGameState_Unit(History.GetGameStateForObjectID(StoredObjectID));
 
 	//this checks if the colour bar(s) have been created yet .. once they have been created, set the colour correctly
-	TrySetHealthBarColour(UnitState.bIsSpecial);
+	TrySetHealthBarColour(m_bIsSpecial);
 	TrySetShieldBarColour();
 
 	//MUST HAPPEN AFTER BAR COLOUR UPDATES AS IT ALSO SETS THE FLAG VISIBLE OR NOT
@@ -301,6 +301,7 @@ simulated function SetHitPoints (int _currentHP, int _maxHP)
 	local ASValue myValue;
 	local Array<ASValue> myArray;
 	local int currentHP, maxHP, iMultiplier;
+	local float SegpercentageOfMax, percentageOfSegments, numSegments;
 
 	//not calling super to avoid multiple flash invokes
 	//super.SetHitPoints(_currentHP, _maxHP);
@@ -334,13 +335,27 @@ simulated function SetHitPoints (int _currentHP, int _maxHP)
 		m_currentHitPoints.SetValue(currentHP);
 		m_maxHitPoints.SetValue(maxHP);
 	}
-
+	
 	//only change the display if the value has been updated
 	if( m_currentHitPoints.HasChanged() || m_maxHitPoints.HasChanged() )
 	{
 		myValue.Type = AS_Number;
-		myValue.n = m_currentHitPoints.GetValue();		myArray.AddItem(myValue);
-		myValue.n = m_maxHitPoints.GetValue();			myArray.AddItem(myValue);
+
+		//display pips as a percentage of max segments ... else normal old display
+		if (class'WOTCLootIndicator_Extended'.default.numSegments > 0)
+		{
+			numSegments = class'WOTCLootIndicator_Extended'.default.numSegments;
+			SegpercentageOfMax = ((m_currentHitPoints.GetValue() * 1.00) / (m_maxHitPoints.GetValue() * 1.00) ) * 100 ;
+			percentageOfSegments = (numSegments / 100.00) * SegpercentageOfMax ;
+
+			myValue.n = percentageOfSegments; 				myArray.AddItem(myValue);
+			myValue.n = numSegments;						myArray.AddItem(myValue);
+		}
+		else
+		{
+			myValue.n = m_currentHitPoints.GetValue();		myArray.AddItem(myValue);
+			myValue.n = m_maxHitPoints.GetValue();			myArray.AddItem(myValue);
+		}
 
 		//invoke sends this to 'the flash queue'
 		//this causes issues with colouring that the bar might not exist - we have had to fix it - thanks to Xymanek!
@@ -349,6 +364,7 @@ simulated function SetHitPoints (int _currentHP, int _maxHP)
 
 	// This handles both destructible and unit HP
 	SetHealthStatEntry(m_currentHitPoints.GetValue(), m_maxHitPoints.GetValue());
+	SetHitPointsPreview(0); //reset any flashing preview pips
 }
 
 simulated function SetShieldPoints( int _currentShields, int _maxShields )
@@ -356,6 +372,7 @@ simulated function SetShieldPoints( int _currentShields, int _maxShields )
 	local ASValue myValue;
 	local Array<ASValue> myArray;
 	local int currentShields, maxShields, iMultiplier;
+	local float SegpercentageOfMax, percentageOfSegments, numSegments;
 
 	//not calling super to avoid multiple flash invokes
 	//super.SetShieldPoints(_currentShields, _maxShields );
@@ -386,8 +403,22 @@ simulated function SetShieldPoints( int _currentShields, int _maxShields )
 	if( m_shieldPoints.HasChanged() || m_maxShieldPoints.HasChanged() )
 	{
 		myValue.Type = AS_Number;
-		myValue.n = m_shieldPoints.GetValue();		myArray.AddItem(myValue);
-		myValue.n = m_maxShieldPoints.GetValue();	myArray.AddItem(myValue);
+
+		//display pips as a percentage of max segments ... else normal old display
+		if (class'WOTCLootIndicator_Extended'.default.numSegments > 0)
+		{
+			numSegments = class'WOTCLootIndicator_Extended'.default.numSegments;
+			SegpercentageOfMax = ((m_shieldPoints.GetValue() * 1.00) / (m_maxShieldPoints.GetValue() * 1.00) ) * 100 ;
+			percentageOfSegments = (numSegments / 100.00) * SegpercentageOfMax ;
+
+			myValue.n = percentageOfSegments; 			myArray.AddItem(myValue);
+			myValue.n = numSegments;					myArray.AddItem(myValue);
+		}
+		else
+		{
+			myValue.n = m_shieldPoints.GetValue();		myArray.AddItem(myValue);
+			myValue.n = m_maxShieldPoints.GetValue();	myArray.AddItem(myValue);
+		}
 
 		//invoke sends this to 'the flash queue'
 		//this causes issues with colouring that the bar might not exist - we have had to fix it - thanks to Xymanek!
@@ -396,7 +427,88 @@ simulated function SetShieldPoints( int _currentShields, int _maxShields )
 
 	// Disable hitpoints preview visualization - sbatista 6/24/2013 [? more like set to merge HP/ShieldHP preview displays ~ RustyDios]
 	// <> TODO : Investigate if this is needed if ShieldHp <=0 
-	SetShieldPointsPreview();
+	SetShieldPointsPreview(0);
+}
+
+simulated function SetHitPointsPreview(optional int _iPossibleDamage = 0)
+{
+	local ASValue myValue;
+	local Array<ASValue> myArray;
+	local int iMultiplier;
+	local float fPossibleDamage, SegpercentageOfMax, percentageOfSegments, numSegments;
+
+	//not calling super to avoid multiple flash invokes
+	//super.SetHitPointsPreview( _iPossibleDamage );
+
+	// Profile or config is set to hide health
+	if(    (!m_bIsFriendly.GetValue() && !`XPROFILESETTINGS.Data.m_bShowEnemyHealth )
+		|| ( m_bIsFriendly.GetValue() && !class'WOTCLootIndicator_Extended'.default.SHOW_BARS_ON_FRIENDLY) )
+	{
+		return;
+	}
+
+	iMultiplier = `GAMECORE.HP_PER_TICK;
+
+	//Always round up for display when using the gamecore multiplier, per Jake's request. 
+	if( iMultiplier > 0 && _iPossibleDamage != 0 )
+	{
+		fPossibleDamage = FCeil(float(_iPossibleDamage) / float(iMultiplier));
+
+		//if we're in segment mode adjust damage previews to a percentage too
+		if (class'WOTCLootIndicator_Extended'.default.numSegments > 0 )
+		{
+			numSegments = class'WOTCLootIndicator_Extended'.default.numSegments;
+			SegpercentageOfMax = ((fPossibleDamage * 1.00) / (m_maxHitPoints.GetValue() * 1.00) ) * 100 ;
+			percentageOfSegments = (numSegments / 100.00) * SegpercentageOfMax ;
+			fPossibleDamage = percentageOfSegments;
+		}
+	}
+
+	myValue.Type = AS_Number;	myValue.n = fPossibleDamage;	myArray.AddItem(myValue);
+	Invoke("SetHitPointsPreview", myArray);
+}
+
+simulated function SetShieldPointsPreview(optional int _iPossibleDamage = 0)
+{
+	local ASValue myValue;
+	local Array<ASValue> myArray;
+	local int iMultiplier;
+	local float fPossibleDamage, SegpercentageOfMax, percentageOfSegments, numSegments;
+
+	//not calling super to avoid multiple flash invokes
+	//super.SetShieldPointsPreview( _iPossibleDamage );
+
+	// Profile or config is set to hide health
+	if(    (!m_bIsFriendly.GetValue() && !`XPROFILESETTINGS.Data.m_bShowEnemyHealth )
+		|| ( m_bIsFriendly.GetValue() && !class'WOTCLootIndicator_Extended'.default.SHOW_BARS_ON_FRIENDLY) )
+	{
+		return;
+	}
+
+	iMultiplier = `GAMECORE.HP_PER_TICK;
+
+	//Always round up for display when using the gamecore multiplier, per Jake's request. 
+	if( iMultiplier > 0 && _iPossibleDamage != 0 )
+	{
+		fPossibleDamage = FCeil(float(_iPossibleDamage) / float(iMultiplier));
+	}
+
+	m_shieldPointsPreview.SetValue(fPossibleDamage);
+
+	if( m_shieldPointsPreview.HasChanged() )
+	{
+		//if we're in segment mode adjust damage previews to a percentage too
+		if (class'WOTCLootIndicator_Extended'.default.numSegments > 0 )
+		{
+			numSegments = class'WOTCLootIndicator_Extended'.default.numSegments;
+			SegpercentageOfMax = ((fPossibleDamage * 1.00) / (m_maxShieldPoints.GetValue() * 1.00) ) * 100 ;
+			percentageOfSegments = (numSegments / 100.00) * SegpercentageOfMax ;
+			fPossibleDamage = percentageOfSegments;
+		}
+
+		myValue.Type = AS_Number;	myValue.n = fPossibleDamage;	myArray.AddItem(myValue);
+		Invoke("SetShieldPointsPreview", myArray);
+	}
 }
 
 //Technically NO CHANGE here now as Armor Text+Icon is a STAT BLOCK thing, Armour Pips being shown is now optional ...
@@ -412,7 +524,8 @@ simulated function SetArmorPoints(optional int _iArmor = 0)
 
 	iMultiplier = `GAMECORE.HP_PER_TICK;
 
-	if(class'WOTCLootIndicator_Extended'.default.SHOW_ARMOUR_PIPS && (m_bIsFriendly.GetValue() || `XPROFILESETTINGS.Data.m_bShowEnemyHealth) )
+	if(class'WOTCLootIndicator_Extended'.default.SHOW_ARMOUR_PIPS 
+		&& (m_bIsFriendly.GetValue() || `XPROFILESETTINGS.Data.m_bShowEnemyHealth) )
 	{
 		//Always round up for display when using the gamecore multiplier, per Jake's request. 
 		if( iMultiplier > 0 )
@@ -435,7 +548,6 @@ simulated function SetArmorPoints(optional int _iArmor = 0)
 		// we dont want to show enemy healthbars so clear armor pips
 		Invoke("ClearAllArmor");
 	}
-
 }
 
 //THIS DOESN'T WORK HOW I THOUGHT IT WOULD. THIS IS INCOMING FROM ANOTHER UNIT, NOT WHAT *THIS* UNIT CAN DO

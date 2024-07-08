@@ -13,6 +13,7 @@
 //=============================================================
 class UIUFE_Manager extends UIUnitFlagManager;
 
+//CLEAR AND RESET UNIT PIPS FOR DAMAGE PREVIEWS
 simulated function ClearAbilityDamagePreview()
 {
 	local UIUnitFlag kFlag;
@@ -20,12 +21,14 @@ simulated function ClearAbilityDamagePreview()
 	// Turn all flag info off initially 
 	foreach m_arrFlags(kFlag)
 	{
-		if( !kFlag.m_bIsFriendly.GetValue() )
-		{
+        //FIXES FLASHING PIPS ON HEALTH SHIELD BARS GETTING STUCK!
+        //REMOVE CHECK FOR FRIENDLY/ENEMY JUST CLEAR THEM ALL TO 0
+		//if( !kFlag.m_bIsFriendly.GetValue() )
+		//{
 			kFlag.SetHitPointsPreview(0);
 			kFlag.SetArmorPointsPreview(0, 0);
-		}
-		//			if(kFlag.m_kUnit.GetCharacter().m_ePawnType == ePawnType_Mechtoid)
-		kFlag.SetShieldPointsPreview(0);
+    		kFlag.SetShieldPointsPreview(0);
+		//}
+		
 	}
 }
