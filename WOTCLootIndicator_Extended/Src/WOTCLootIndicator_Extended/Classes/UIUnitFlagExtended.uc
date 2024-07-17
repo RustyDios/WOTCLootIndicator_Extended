@@ -342,9 +342,9 @@ simulated function SetHitPoints (int _currentHP, int _maxHP)
 		myValue.Type = AS_Number;
 
 		//display pips as a percentage of max segments ... else normal old display
-		if (class'WOTCLootIndicator_Extended'.default.numSegments > 0)
+		numSegments = class'WOTCLootIndicator_Extended'.default.numSegments_Health;
+		if (numSegments > 0)
 		{
-			numSegments = class'WOTCLootIndicator_Extended'.default.numSegments;
 			SegpercentageOfMax = ((m_currentHitPoints.GetValue() * 1.00) / (m_maxHitPoints.GetValue() * 1.00) ) * 100 ;
 			percentageOfSegments = (numSegments / 100.00) * SegpercentageOfMax ;
 
@@ -405,9 +405,9 @@ simulated function SetShieldPoints( int _currentShields, int _maxShields )
 		myValue.Type = AS_Number;
 
 		//display pips as a percentage of max segments ... else normal old display
-		if (class'WOTCLootIndicator_Extended'.default.numSegments > 0)
+		numSegments = class'WOTCLootIndicator_Extended'.default.numSegments_Shield;
+		if (numSegments > 0)
 		{
-			numSegments = class'WOTCLootIndicator_Extended'.default.numSegments;
 			SegpercentageOfMax = ((m_shieldPoints.GetValue() * 1.00) / (m_maxShieldPoints.GetValue() * 1.00) ) * 100 ;
 			percentageOfSegments = (numSegments / 100.00) * SegpercentageOfMax ;
 
@@ -455,9 +455,9 @@ simulated function SetHitPointsPreview(optional int _iPossibleDamage = 0)
 		fPossibleDamage = FCeil(float(_iPossibleDamage) / float(iMultiplier));
 
 		//if we're in segment mode adjust damage previews to a percentage too
-		if (class'WOTCLootIndicator_Extended'.default.numSegments > 0 )
+		numSegments = class'WOTCLootIndicator_Extended'.default.numSegments_Health;
+		if (numSegments > 0 )
 		{
-			numSegments = class'WOTCLootIndicator_Extended'.default.numSegments;
 			SegpercentageOfMax = ((fPossibleDamage * 1.00) / (m_maxHitPoints.GetValue() * 1.00) ) * 100 ;
 			percentageOfSegments = (numSegments / 100.00) * SegpercentageOfMax ;
 			fPossibleDamage = percentageOfSegments;
@@ -498,9 +498,9 @@ simulated function SetShieldPointsPreview(optional int _iPossibleDamage = 0)
 	if( m_shieldPointsPreview.HasChanged() )
 	{
 		//if we're in segment mode adjust damage previews to a percentage too
-		if (class'WOTCLootIndicator_Extended'.default.numSegments > 0 )
+		numSegments = class'WOTCLootIndicator_Extended'.default.numSegments_Shield;
+		if (numSegments > 0 )
 		{
-			numSegments = class'WOTCLootIndicator_Extended'.default.numSegments;
 			SegpercentageOfMax = ((fPossibleDamage * 1.00) / (m_maxShieldPoints.GetValue() * 1.00) ) * 100 ;
 			percentageOfSegments = (numSegments / 100.00) * SegpercentageOfMax ;
 			fPossibleDamage = percentageOfSegments;
