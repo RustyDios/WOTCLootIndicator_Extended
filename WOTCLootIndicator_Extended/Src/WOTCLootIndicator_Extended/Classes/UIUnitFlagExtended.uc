@@ -2,7 +2,7 @@
 //  FILE:   UIUnitFlagExtended  by Xymanek && RustyDios
 //  
 //	File created	13/07/22	17:00
-//	LAST UPDATED	08/06/24	05:30
+//	LAST UPDATED	26/05/26	21:00
 //
 //	<> TODO : Rework && Update Y Shift value correctly
 //
@@ -22,7 +22,7 @@ enum EFlagObjectType
 	eFOT_Invalid,
 	eFOT_Unit,
 	eFOT_Destructible,
-	eFOT_DestructibleNoFlag,
+	eFOT_DestructibleNoFlag
 };
 
 var EFlagObjectType ObjectType;
@@ -281,6 +281,9 @@ simulated function UpdateFromUnitState (XComGameState_Unit NewUnitState, bool bI
 		UpdateBigAlienHead(NewUnitState);
 		UpdateDamageString(NewUnitState);
 	}
+
+	// recheck faction to reset/update friendly unit state of flag if changed
+	RealizeFaction(NewUnitState);
 
 	UpdateLootIndicator(NewUnitState);
 	UpdateNameRow(NewUnitState);
@@ -576,7 +579,7 @@ simulated protected function BuildLootIndicator()
 	LootIcon.bDisableSelectionBrackets = true;
 	LootIcon.bAnimateOnInit = false;
 	LootIcon.bIsNavigable = false;
-	LootIcon.InitIcon('RustyLootIcon',"img:///UILibrary_UIFlagExtended.UIFlag_Loot", false, false, class'WOTCLootIndicator_Extended'.default.INFO_ICON_SIZE);
+	LootIcon.InitIcon('RustyLootIcon', "img:///UILibrary_UIFlagExtended.UIFlag_Loot", false, false, class'WOTCLootIndicator_Extended'.default.INFO_ICON_SIZE);
 
 	LootIcon.SetX(class'WOTCLootIndicator_Extended'.default.LOOT_OFFSET_X);
 	LootIcon.SetY(class'WOTCLootIndicator_Extended'.default.LOOT_OFFSET_Y + GetYShift());
@@ -612,6 +615,14 @@ simulated protected function UpdateLootIndicator (XComGameState_Unit NewUnitStat
 	if ( LootIcon == none ) { return; }
 
 	LootIcon.SetVisible(ShouldShowLootIndicator(NewUnitState) && NewUnitState.PendingLoot.LootToBeCreated.Length > 0);
+
+	//if (NewUnitState.IsSoldier() && LootIcon.ImagePath == "img:///UILibrary_UIFlagExtended.UIFlag_Loot" 
+	//	&& class'WOTCLootIndicator_Extended'.default.SHOW_CLASSICONS
+	//	&& NewUnitState.PendingLoot.LootToBeCreated.Length <= 0 )
+	//{
+	//	LootIcon.LoadIcon(NewUnitState.GetSoldierClassIcon());
+	//	LootIcon.SetVisible(true);
+	//}
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1256,8 +1267,8 @@ simulated protected function string GetBarColours_Health (XComGameState_Unit New
 			}
 		}
 
-		if (NewUnitState.bIsSpecial) 	{ return "ACD373" ; }
-		if (NewUnitState.IsChosen())	{ return "B6B3E3" ; }
+		if (NewUnitState.bIsSpecial) 	{ return class'WOTCLootIndicator_Extended'.default.SpecialBarColours_Health_bIsSpecial; } //"ACD373" ; }
+		if (NewUnitState.IsChosen())	{ return class'WOTCLootIndicator_Extended'.default.SpecialBarColours_Health_bIsAChosen; } //"B6B3E3" ; }
 	}
 
 	//else and for all other cases set bar colour to HUD Icon Colour
@@ -1267,7 +1278,8 @@ simulated protected function string GetBarColours_Health (XComGameState_Unit New
 simulated protected function UpdateBarColours_Health (optional XComGameState_Unit NewUnitState)
 {
 	//only do the recolour of Health if it is a unit and set to do so by the config
-	if (ObjectType != eFOT_Unit || !class'WOTCLootIndicator_Extended'.default.HPBAR_COLOUR_BYTEAM )  { return; }
+	if (ObjectType != eFOT_Unit )  { return; }
+	if (!class'WOTCLootIndicator_Extended'.default.HPBAR_COLOUR_BYTEAM )  { return; }
 
 	//get unit if it was not passed in, as we need one
 	if (NewUnitState == none)
@@ -1360,8 +1372,8 @@ simulated protected function string GetBarColours_Shield (XComGameState_Unit New
 		}
 
 		//colours for special units
-		if (NewUnitState.bIsSpecial)	{ return "ACD373" ; }
-		if (NewUnitState.IsChosen())	{ return "B6B3E3" ; }
+		if (NewUnitState.bIsSpecial) 	{ return class'WOTCLootIndicator_Extended'.default.SpecialBarColours_Shield_bIsSpecial; } //"ACD373" ; }
+		if (NewUnitState.IsChosen())	{ return class'WOTCLootIndicator_Extended'.default.SpecialBarColours_Shield_bIsAChosen; } //"B6B3E3" ; }
 	}
 
 	//else and for all other cases set bar colour to HUD Icon Colour
@@ -1379,8 +1391,9 @@ simulated protected function string GetBarColours_Shield (XComGameState_Unit New
 //this had to be extended to check the shield bar has been created in flash before we try to recolour it
 simulated protected function UpdateBarColours_Shield (optional XComGameState_Unit NewUnitState)
 {
-	//only do the recolour of Shield if it is a unit (and set to do so by the config ... )
+	//only do the recolour of Shield if it is a unit and set to do so by the config ... 
 	if (ObjectType != eFOT_Unit)  { return; }
+	if (!class'WOTCLootIndicator_Extended'.default.SHIELDBAR_COLOUR )  { return; }
 
 	//get unit if it was not passed in, as we need one
 	if (NewUnitState == none)
@@ -1844,6 +1857,11 @@ simulated function FindHUDIconDetails(out string strIcon, out string HexColour)
 
 		if (UnitState != none)
 		{
+			if (UnitState.IsSoldier() && class'WOTCLootIndicator_Extended'.default.SHOW_CLASSICONS)
+			{
+				strIcon = Repl("img:///", UnitState.GetSoldierClassIcon(), "");
+			}
+
 			Visualizer = X2VisualizerInterface(UnitState.GetVisualizer());
 		}
 	}
@@ -1861,7 +1879,7 @@ simulated function FindHUDIconDetails(out string strIcon, out string HexColour)
 	//UNIT OR DESTRUCTIBLE VISUALIZER FOUND
 	if (Visualizer != none)
 	{
-		strIcon = Visualizer.GetMyHUDIcon();
+		strIcon = strIcon == "" ? Visualizer.GetMyHUDIcon() : strIcon;
 		iColourState = Visualizer.GetMyHUDIconColor();
 	}
 
