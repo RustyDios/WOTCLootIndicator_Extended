@@ -720,7 +720,7 @@ simulated protected function string GetUnitDisplayedName (XComGameState_Unit New
 	NameToDisplay = class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS(NewUnitState.GetNickName(true));
 
 	//If Nickname was Empty get Full Name
-	if (NameToDisplay == "")
+	if (NameToDisplay == "" || class'WOTCLootIndicator_Extended'.default.NAME_USE_FULLNAMES)
 	{
 		NameToDisplay = class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS(NewUnitState.GetName(eNameType_Full));
 	}
